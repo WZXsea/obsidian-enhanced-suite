@@ -116,9 +116,14 @@ function destination(text: string, start: number): { target: string; end: number
 export function extractImages(text: string): ImageReference[] {
   const source = visibleSource(text);
   const refs = new Map<string, string>();
-  for (const match of source.matchAll(/^ {0,3}\[([^\]\n]+)\]:[ \t]*(.*)$/gm)) {
-    const parsed = destination(match[2], 0);
-    if (parsed && !refs.has(normalizeLabel(match[1]))) refs.set(normalizeLabel(match[1]), parsed.target);
+  for (const match of source.matchAll(/^ {0,3}\[/gm)) {
+    const start = match.index! + match[0].length;
+    const bracket = closingBracket(source, start);
+    if (bracket < 0 || source[bracket + 1] !== ':' || /[\r\n]/.test(source.slice(start, bracket))) continue;
+    const end = source.indexOf('\n', bracket);
+    const parsed = destination(source.slice(bracket + 2, end < 0 ? source.length : end), 0);
+    const label = normalizeLabel(source.slice(start, bracket));
+    if (parsed && !refs.has(label)) refs.set(label, parsed.target);
   }
   const results: ImageReference[] = [];
   const lineStarts = [0];

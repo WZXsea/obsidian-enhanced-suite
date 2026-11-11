@@ -73,9 +73,9 @@ var LAYOUT_LABELS = {
 
 // src/model.ts
 var layouts = /* @__PURE__ */ new Set(["a", "b", "c", "d", "e", "f", "g", "h", "i", "single", "masonry-2", "masonry-3", "masonry-4", "masonry-5", "masonry-6", "carousel", "filmstrip", "focus", "custom", "stage-left", "stage-right"]);
-var own = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
+var own = (object2, key) => Object.prototype.hasOwnProperty.call(object2, key);
 var record = (value) => value !== null && typeof value === "object" && !Array.isArray(value) ? value : {};
-var pick = (object, key, alias) => own(object, key) ? object[key] : alias && own(object, alias) ? object[alias] : void 0;
+var pick = (object2, key, alias) => own(object2, key) ? object2[key] : alias && own(object2, alias) ? object2[alias] : void 0;
 var word = (value) => typeof value === "string" ? value.trim().toLowerCase() : "";
 var text = (value, fallback) => typeof value === "string" ? value : fallback;
 var bool = (value, fallback) => typeof value === "boolean" ? value : fallback;
@@ -93,29 +93,29 @@ function dimension(value, fallback) {
   return `${Math.min(max, Number(match[1]))}${unit}`;
 }
 function normalized(input, fallback) {
-  const object = record(input);
-  const layoutInput = word(object.layout).replace(/^legacy-layout-/, "").replace(/^masonry([2-6])$/, "masonry-$1");
-  const overlay = word(object.overlay);
-  const fit = word(object.fit);
-  const align = word(object.align);
+  const object2 = record(input);
+  const layoutInput = word(object2.layout).replace(/^legacy-layout-/, "").replace(/^masonry([2-6])$/, "masonry-$1");
+  const overlay = word(object2.overlay);
+  const fit = word(object2.fit);
+  const align = word(object2.align);
   return {
-    id: text(object.id, fallback.id),
+    id: text(object2.id, fallback.id),
     layout: layouts.has(layoutInput) ? layoutInput : fallback.layout,
     fit: ["cover", "contain", "natural"].includes(fit) ? fit : fallback.fit,
-    height: bounded(pick(object, "height", "carouselHeight"), fallback.height, 120, 1200),
-    gap: bounded(object.gap, fallback.gap, 0, 64),
-    radius: bounded(object.radius, fallback.radius, 0, 48),
-    caption: text(object.caption, fallback.caption),
-    grid: text(object.grid, fallback.grid),
-    thumbnails: bool(pick(object, "thumbnails", "carouselShowThumbnails"), fallback.thumbnails),
-    overlay: ["never", "hover", "always"].includes(overlay) ? overlay : typeof object.permanentOverlay === "boolean" ? object.permanentOverlay ? "always" : "hover" : fallback.overlay,
+    height: bounded(pick(object2, "height", "carouselHeight"), fallback.height, 120, 1200),
+    gap: bounded(object2.gap, fallback.gap, 0, 64),
+    radius: bounded(object2.radius, fallback.radius, 0, 48),
+    caption: text(object2.caption, fallback.caption),
+    grid: text(object2.grid, fallback.grid),
+    thumbnails: bool(pick(object2, "thumbnails", "carouselShowThumbnails"), fallback.thumbnails),
+    overlay: ["never", "hover", "always"].includes(overlay) ? overlay : typeof object2.permanentOverlay === "boolean" ? object2.permanentOverlay ? "always" : "hover" : fallback.overlay,
     align: ["left", "center", "right", "full"].includes(align) ? align : fallback.align,
-    width: dimension(object.width, fallback.width),
-    descriptions: Array.isArray(object.descriptions) ? object.descriptions.map((value) => typeof value === "string" ? value : "") : [...fallback.descriptions],
-    fromFolder: text(object.fromFolder, fallback.fromFolder),
-    sortBy: ["name", "mtime"].includes(word(object.sortBy)) ? word(object.sortBy) : fallback.sortBy,
-    reverse: bool(object.reverse, fallback.reverse),
-    limit: Math.floor(bounded(object.limit, fallback.limit, 0, 1e3))
+    width: dimension(object2.width, fallback.width),
+    descriptions: Array.isArray(object2.descriptions) ? object2.descriptions.map((value) => typeof value === "string" ? value : "") : [...fallback.descriptions],
+    fromFolder: text(object2.fromFolder, fallback.fromFolder),
+    sortBy: ["name", "mtime"].includes(word(object2.sortBy)) ? word(object2.sortBy) : fallback.sortBy,
+    reverse: bool(object2.reverse, fallback.reverse),
+    limit: Math.floor(bounded(object2.limit, fallback.limit, 0, 1e3))
   };
 }
 function normalizeOptions(input, defaults = {}) {
@@ -173,8 +173,8 @@ function parseGroups(source) {
         let options = null;
         try {
           if (!opening[1].includes("-->") && !opening[1].includes("<!--")) {
-            const parsed = JSON.parse(opening[1]);
-            if (parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)) options = normalizeOptions(parsed);
+            const parsed2 = JSON.parse(opening[1]);
+            if (parsed2 !== null && typeof parsed2 === "object" && !Array.isArray(parsed2)) options = normalizeOptions(parsed2);
           }
         } catch {
         }
@@ -415,9 +415,14 @@ function destination(text2, start) {
 function extractImages(text2) {
   const source = visibleSource(text2);
   const refs = /* @__PURE__ */ new Map();
-  for (const match of source.matchAll(/^ {0,3}\[([^\]\n]+)\]:[ \t]*(.*)$/gm)) {
-    const parsed = destination(match[2], 0);
-    if (parsed && !refs.has(normalizeLabel(match[1]))) refs.set(normalizeLabel(match[1]), parsed.target);
+  for (const match of source.matchAll(/^ {0,3}\[/gm)) {
+    const start = match.index + match[0].length;
+    const bracket = closingBracket(source, start);
+    if (bracket < 0 || source[bracket + 1] !== ":" || /[\r\n]/.test(source.slice(start, bracket))) continue;
+    const end = source.indexOf("\n", bracket);
+    const parsed2 = destination(source.slice(bracket + 2, end < 0 ? source.length : end), 0);
+    const label = normalizeLabel(source.slice(start, bracket));
+    if (parsed2 && !refs.has(label)) refs.set(label, parsed2.target);
   }
   const results = [];
   const lineStarts = [0];
@@ -456,9 +461,9 @@ function extractImages(text2) {
     const alt = unescapeMarkdown(text2.slice(i + 2, bracket));
     let end = bracket + 1;
     if (source[end] === "(") {
-      const parsed = destination(source, end + 1);
-      if (!parsed) continue;
-      end = parsed.end;
+      const parsed2 = destination(source, end + 1);
+      if (!parsed2) continue;
+      end = parsed2.end;
       while (/\s/.test(source[end] ?? "") && end < source.length) end++;
       if (/['"(]/.test(source[end] ?? "")) {
         const quote = source[end++] === "(" ? ")" : source[end - 1];
@@ -468,7 +473,7 @@ function extractImages(text2) {
         while (/\s/.test(source[end] ?? "") && end < source.length) end++;
       }
       if (source[end] !== ")") continue;
-      add(i, end + 1, parsed.target, alt, "markdown");
+      add(i, end + 1, parsed2.target, alt, "markdown");
       i = end;
     } else {
       let label = alt;
@@ -541,12 +546,12 @@ function definition(rows, weights) {
 }
 function getGridDefinition(layout, customGrid = "") {
   if (layout === "custom") {
-    const parsed = parseCustomGrid(customGrid);
-    if ("error" in parsed) {
-      return { ...getGridDefinition("g"), fallbackReason: parsed.error };
+    const parsed2 = parseCustomGrid(customGrid);
+    if ("error" in parsed2) {
+      return { ...getGridDefinition("g"), fallbackReason: parsed2.error };
     }
-    const rows = [...parsed.areas.matchAll(/"([^"]+)"/g)].map((match) => match[1].split(" "));
-    return definition(rows, Array(parsed.columns).fill(1));
+    const rows = [...parsed2.areas.matchAll(/"([^"]+)"/g)].map((match) => match[1].split(" "));
+    return definition(rows, Array(parsed2.columns).fill(1));
   }
   const preset = PRESETS[layout];
   return preset ? definition(preset.rows.map((row) => row.map((index) => `image-${index}`)), preset.weights) : null;
@@ -968,10 +973,10 @@ var GalleryRenderer = class {
     if (!current) {
       const stage = getDominantGridDefinition(this.options.layout, this.images.length);
       if (stage) {
-        const signature = (grid) => JSON.stringify([grid.columnFractions, grid.rows, grid.areas]);
+        const signature2 = (grid) => JSON.stringify([grid.columnFractions, grid.rows, grid.areas]);
         current = this.layoutChoices.find((choice) => {
           const candidate = getDominantGridDefinition(choice.layout, this.images.length);
-          return candidate && signature(candidate) === signature(stage);
+          return candidate && signature2(candidate) === signature2(stage);
         });
       }
     }
@@ -2484,8 +2489,8 @@ var GalleryConfiguration = class {
       this.values.width = `${Number(match[1])}${unit}`;
     }
     if (this.values.layout === "custom" && this.values.grid !== this.original.grid) {
-      const parsed = parseCustomGrid(this.values.grid);
-      if ("error" in parsed) return parsed.error;
+      const parsed2 = parseCustomGrid(this.values.grid);
+      if ("error" in parsed2) return parsed2.error;
     }
     return void 0;
   }
@@ -2527,11 +2532,309 @@ var GalleryConfiguration = class {
   }
 };
 
+// src/image-resize.ts
+var ImageResizeHandle = class {
+  constructor(doc) {
+    this.doc = doc;
+    this.win = doc.defaultView;
+    this.root = doc.createElement("div");
+    this.root.className = "ilg-image-resize";
+    this.root.hidden = true;
+    this.root.setAttribute("data-ilg-interactive", "1");
+    this.handle = doc.createElement("button");
+    this.handle.type = "button";
+    this.handle.className = "ilg-image-resize-handle";
+    this.handle.setAttribute("role", "slider");
+    this.handle.setAttribute("aria-orientation", "horizontal");
+    this.handle.setAttribute("aria-label", "\u8C03\u6574\u56FE\u7247\u5BBD\u5EA6");
+    this.handle.title = "\u62D6\u52A8\u8C03\u6574\u56FE\u7247\u5927\u5C0F";
+    this.root.appendChild(this.handle);
+    this.readout = doc.createElement("span");
+    this.readout.className = "ilg-image-resize-readout";
+    this.readout.setAttribute("aria-hidden", "true");
+    this.root.appendChild(this.readout);
+    doc.body.appendChild(this.root);
+    this.listen(this.handle, "pointerdown", (event) => this.down(event));
+    this.listen(this.handle, "pointermove", (event) => this.move(event));
+    this.listen(this.handle, "pointerup", (event) => {
+      if (this.drag?.pointer !== event.pointerId) return;
+      this.flush();
+      this.commit();
+    });
+    for (const type of ["pointercancel", "lostpointercapture"]) {
+      this.listen(this.handle, type, (event) => {
+        if (this.drag?.pointer === event.pointerId) this.abort();
+      });
+    }
+    this.listen(this.handle, "keydown", (event) => this.key(event));
+    this.listen(this.handle, "click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+    });
+  }
+  root;
+  handle;
+  readout;
+  win;
+  dispose = [];
+  visibleDispose = [];
+  image;
+  context;
+  container;
+  drag;
+  pending;
+  frame = 0;
+  nextX;
+  destroyed = false;
+  get active() {
+    return Boolean(this.drag || this.pending);
+  }
+  contains(target) {
+    return Boolean(target && this.root.contains(target));
+  }
+  show(image, context) {
+    if (this.destroyed || this.active) return;
+    if (this.image === image) {
+      this.context = context;
+      this.position();
+      return;
+    }
+    this.hide();
+    if (!image.isConnected) return;
+    this.image = image;
+    this.context = context;
+    this.container = this.findContainer(image);
+    this.root.hidden = false;
+    this.handle.disabled = false;
+    if (!this.position()) return;
+    const listen = (target, type, callback, capture = false) => {
+      target.addEventListener(type, callback, capture);
+      this.visibleDispose.push(() => target.removeEventListener(type, callback, capture));
+    };
+    listen(this.doc, "scroll", () => this.hide(), true);
+    listen(this.doc, "keydown", (event) => {
+      const key = event;
+      if (key.key === "Escape" && !key.isComposing && key.keyCode !== 229) this.hide();
+    }, true);
+    if (this.win) {
+      listen(this.win, "resize", () => this.hide());
+      listen(this.win, "blur", () => this.hide());
+      if (this.win.visualViewport) {
+        listen(this.win.visualViewport, "resize", () => this.hide());
+        listen(this.win.visualViewport, "scroll", () => this.hide());
+      }
+      const containerWidth = this.container?.getBoundingClientRect().width;
+      const observer = new this.win.ResizeObserver(() => {
+        if (!this.image?.isConnected || containerWidth !== void 0 && this.container && Math.abs(this.container.getBoundingClientRect().width - containerWidth) > 0.5) this.hide();
+        else this.position();
+      });
+      observer.observe(image);
+      if (this.container) observer.observe(this.container);
+      this.visibleDispose.push(() => observer.disconnect());
+      const mutation = new this.win.MutationObserver(() => {
+        if (!image.isConnected) this.hide();
+      });
+      mutation.observe(this.doc.documentElement, { childList: true, subtree: true });
+      this.visibleDispose.push(() => mutation.disconnect());
+    }
+  }
+  hide() {
+    this.visibleDispose.splice(0).forEach((dispose) => dispose());
+    this.abort();
+    if (this.pending) this.restore(this.pending);
+    this.pending = void 0;
+    this.image = void 0;
+    this.context = void 0;
+    this.container = void 0;
+    this.root.hidden = true;
+    this.handle.disabled = false;
+  }
+  destroy() {
+    if (this.destroyed) return;
+    this.destroyed = true;
+    this.hide();
+    this.dispose.splice(0).forEach((dispose) => dispose());
+    this.root.remove();
+  }
+  findContainer(image) {
+    let element = image.parentElement;
+    while (element && (element.matches(".image-embed, .image-wrapper, a") || this.win?.getComputedStyle(element).display === "contents")) element = element.parentElement;
+    return element ?? void 0;
+  }
+  contentBounds() {
+    const element = this.container;
+    if (!element || !this.win) return { left: 0, width: Math.max(32, this.win?.innerWidth ?? 32) };
+    const rect = element.getBoundingClientRect();
+    const style = this.win.getComputedStyle(element);
+    const left = parseFloat(style.paddingLeft) + parseFloat(style.borderLeftWidth);
+    const right = parseFloat(style.paddingRight) + parseFloat(style.borderRightWidth);
+    return { left: rect.left + left, width: Math.max(32, rect.width - left - right) };
+  }
+  isCentered(image) {
+    const marked = image.closest("[data-ilg-image-align], [data-ilg-align]");
+    const align = marked?.dataset.ilgImageAlign ?? marked?.dataset.ilgAlign ?? image.getAttribute("align");
+    if (align === "center") return true;
+    if (align === "left" || align === "right") return false;
+    const rect = image.getBoundingClientRect(), bounds = this.contentBounds();
+    return Math.abs(rect.left + rect.width / 2 - bounds.left - bounds.width / 2) < 3;
+  }
+  start(pointer, x) {
+    const image = this.image, context = this.context;
+    if (!image?.isConnected || !context || this.active) return;
+    const rect = image.getBoundingClientRect();
+    const drag = {
+      image,
+      context,
+      pointer,
+      startX: x,
+      startWidth: rect.width,
+      width: rect.width,
+      maxWidth: Math.floor(this.contentBounds().width),
+      centered: this.isCentered(image),
+      ratio: image.naturalWidth > 0 && image.naturalHeight > 0 ? image.naturalWidth / image.naturalHeight : rect.width / rect.height,
+      styles: ["width", "height", "max-width", "max-height"].map((name) => ({
+        name,
+        value: image.style.getPropertyValue(name),
+        priority: image.style.getPropertyPriority(name)
+      })),
+      hadStyle: image.hasAttribute("style"),
+      restored: false
+    };
+    this.drag = drag;
+    this.root.classList.add("is-dragging");
+    return drag;
+  }
+  down(event) {
+    if (this.pending || event.button !== 0) return;
+    if (this.drag) {
+      if (this.drag.pointer !== event.pointerId) this.abort();
+      return;
+    }
+    if (!this.start(event.pointerId, event.clientX)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    try {
+      this.handle.setPointerCapture(event.pointerId);
+    } catch {
+      this.abort();
+    }
+  }
+  move(event) {
+    if (!this.drag || this.drag.pointer !== event.pointerId) return;
+    this.nextX = event.clientX;
+    if (!this.frame && this.win) this.frame = this.win.requestAnimationFrame(() => {
+      this.frame = 0;
+      this.flush();
+    });
+  }
+  flush() {
+    if (this.frame) this.win?.cancelAnimationFrame(this.frame);
+    this.frame = 0;
+    const drag = this.drag, x = this.nextX;
+    this.nextX = void 0;
+    if (!drag || x === void 0) return;
+    this.preview(drag, drag.startWidth + (x - drag.startX) * (drag.centered ? 2 : 1));
+  }
+  preview(drag, requested) {
+    drag.width = Math.round(Math.max(32, Math.min(drag.maxWidth, requested)));
+    drag.image.style.setProperty("width", `${drag.width}px`, "important");
+    drag.image.style.setProperty("height", "auto", "important");
+    drag.image.style.setProperty("max-width", `${drag.maxWidth}px`, "important");
+    drag.image.style.setProperty("max-height", "none", "important");
+    this.updateValue(drag.width, drag.maxWidth);
+    this.readout.textContent = `${drag.width} \xD7 ${Math.round(drag.width / drag.ratio)} px`;
+    this.position();
+  }
+  commit() {
+    const drag = this.drag;
+    if (!drag) return;
+    if (Math.abs(drag.width - drag.startWidth) < 0.5) {
+      this.abort();
+      return;
+    }
+    this.drag = void 0;
+    this.root.classList.remove("is-dragging");
+    this.pending = drag;
+    this.handle.disabled = true;
+    this.release(drag.pointer);
+    void Promise.resolve().then(() => drag.context.save(drag.width)).catch(() => void 0).finally(() => {
+      this.restore(drag);
+      if (this.pending === drag) {
+        this.pending = void 0;
+        this.hide();
+      }
+    });
+  }
+  abort() {
+    if (this.frame) this.win?.cancelAnimationFrame(this.frame);
+    this.frame = 0;
+    this.nextX = void 0;
+    const drag = this.drag;
+    this.drag = void 0;
+    this.root.classList.remove("is-dragging");
+    if (drag) {
+      this.restore(drag);
+      this.release(drag.pointer);
+    }
+  }
+  restore(preview) {
+    if (preview.restored) return;
+    preview.restored = true;
+    for (const style of preview.styles) {
+      if (style.value) preview.image.style.setProperty(style.name, style.value, style.priority);
+      else preview.image.style.removeProperty(style.name);
+    }
+    if (!preview.hadStyle && preview.image.style.length === 0) preview.image.removeAttribute("style");
+  }
+  release(pointer) {
+    if (pointer !== null && this.handle.hasPointerCapture(pointer)) this.handle.releasePointerCapture(pointer);
+  }
+  key(event) {
+    if (event.isComposing || event.keyCode === 229 || this.active) return;
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+    const drag = this.start(null, 0);
+    if (!drag) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const step = event.shiftKey ? 50 : 10;
+    this.preview(drag, event.key === "Home" ? 32 : event.key === "End" ? drag.maxWidth : drag.startWidth + (event.key === "ArrowRight" ? step : -step));
+    this.commit();
+  }
+  updateValue(width, maxWidth) {
+    this.handle.setAttribute("aria-valuemin", "32");
+    this.handle.setAttribute("aria-valuemax", String(Math.round(maxWidth)));
+    this.handle.setAttribute("aria-valuenow", String(Math.round(width)));
+    this.handle.setAttribute("aria-valuetext", `\u56FE\u7247\u5BBD\u5EA6 ${Math.round(width)} \u50CF\u7D20`);
+  }
+  position() {
+    const image = this.image;
+    if (!image?.isConnected) {
+      this.hide();
+      return false;
+    }
+    const rect = image.getBoundingClientRect();
+    const width = this.win?.innerWidth ?? this.doc.documentElement.clientWidth;
+    const height = this.win?.innerHeight ?? this.doc.documentElement.clientHeight;
+    if (rect.width <= 0 || rect.height <= 0 || rect.bottom <= 0 || rect.top >= height || rect.right <= 0 || rect.left >= width) {
+      this.hide();
+      return false;
+    }
+    this.root.style.left = `${Math.max(8, Math.min(width - 8, rect.right))}px`;
+    this.root.style.top = `${Math.max(8, Math.min(height - 8, rect.bottom))}px`;
+    if (!this.drag) this.updateValue(rect.width, this.contentBounds().width);
+    return true;
+  }
+  listen(target, type, callback) {
+    target.addEventListener(type, callback);
+    this.dispose.push(() => target.removeEventListener(type, callback));
+  }
+};
+
 // src/image-controls.ts
 var ImageControls = class {
-  constructor(doc, resolve) {
+  constructor(doc, resolve2) {
     this.doc = doc;
-    this.resolve = resolve;
+    this.resolve = resolve2;
     this.ownerWindow = doc.defaultView;
     this.toolbar = doc.createElement("div");
     this.toolbar.className = "ilg-image-controls";
@@ -2541,16 +2844,23 @@ var ImageControls = class {
     this.layoutButton = this.createButton("\u5E03\u5C40", () => this.context?.layout);
     this.settingsButton = this.createButton("\u8BBE\u7F6E", () => this.context?.configure);
     this.settingsButton.setAttribute("aria-label", "\u753B\u5ECA\u8BBE\u7F6E");
+    this.restoreButton = this.createButton("\u6062\u590D\u5C3A\u5BF8", () => this.context?.restore);
+    this.restoreButton.setAttribute("aria-label", "\u6062\u590D\u7B14\u8BB0\u4E2D\u7684\u56FE\u7247\u5C3A\u5BF8");
     doc.body.appendChild(this.toolbar);
     this.listen(doc, "pointerdown", (event) => {
       const pointer = event;
-      if (pointer.pointerType !== "touch") return;
+      this.releaseClick = false;
+      this.suppressedImage = void 0;
+      const target = this.element(event.target);
+      if (target && (this.toolbar.contains(target) || this.resizer?.contains(target))) return;
+      if (pointer.pointerType !== "touch") {
+        if (!this.findImage(target)) this.hide();
+        return;
+      }
       if (this.press) {
         this.cancelPress();
         return;
       }
-      const target = this.element(event.target);
-      if (target && this.toolbar.contains(target)) return;
       const image = this.findImage(target);
       if (!image) {
         this.hide();
@@ -2561,6 +2871,7 @@ var ImageControls = class {
         if (!this.press) return;
         this.touchControls = true;
         this.suppressedImage = image;
+        this.releaseClick = true;
         this.suppressUntil = Date.now() + 1800;
         this.show(image);
         this.cancelPress();
@@ -2572,7 +2883,16 @@ var ImageControls = class {
     }, true);
     for (const type of ["pointerup", "pointercancel"]) this.listen(doc, type, () => this.cancelPress(), true);
     this.listen(doc, "click", (event) => {
-      if (Date.now() < this.suppressUntil && this.findImage(this.element(event.target)) === this.suppressedImage) {
+      const click = event;
+      const compatible = click.detail !== 0 || click.pointerType === "touch";
+      if (this.releaseClick && Date.now() < this.suppressUntil && compatible) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        this.releaseClick = false;
+        this.suppressedImage = void 0;
+        return;
+      }
+      if (compatible && this.suppressedImage && Date.now() < this.suppressUntil && this.findImage(this.element(event.target)) === this.suppressedImage) {
         event.preventDefault();
         event.stopImmediatePropagation();
         this.suppressedImage = void 0;
@@ -2587,25 +2907,26 @@ var ImageControls = class {
     this.listen(doc, "pointerover", (event) => {
       if (event.pointerType === "touch") return;
       const target = this.element(event.target);
-      if (target && this.toolbar.contains(target)) {
+      if (target && (this.toolbar.contains(target) || this.resizer?.contains(target))) {
         this.cancelHide();
         return;
       }
+      if (this.resizer?.active) return;
       const image = this.findImage(target);
       if (image) this.show(image);
     });
     this.listen(doc, "pointerout", (event) => {
       const pointer = event;
-      if (pointer.pointerType === "touch" || this.touchControls) return;
+      if (pointer.pointerType === "touch" || this.touchControls || this.resizer?.active) return;
       const target = this.element(pointer.target);
-      if (!target || this.findImage(target) !== this.image && !this.toolbar.contains(target)) return;
+      if (!target || this.findImage(target) !== this.image && !this.toolbar.contains(target) && !this.resizer?.contains(target)) return;
       const related = this.element(pointer.relatedTarget);
-      if (related && (this.findImage(related) === this.image || this.toolbar.contains(related))) this.cancelHide();
+      if (related && (this.findImage(related) === this.image || this.toolbar.contains(related) || this.resizer?.contains(related))) this.cancelHide();
       else this.scheduleHide();
     });
     this.listen(doc, "focusin", (event) => {
       const target = this.element(event.target);
-      if (target && this.toolbar.contains(target)) {
+      if (target && (this.toolbar.contains(target) || this.resizer?.contains(target))) {
         this.cancelHide();
         return;
       }
@@ -2626,6 +2947,8 @@ var ImageControls = class {
   toolbar;
   layoutButton;
   settingsButton;
+  restoreButton;
+  resizer;
   ownerWindow;
   image;
   context;
@@ -2634,13 +2957,21 @@ var ImageControls = class {
   press;
   suppressedImage;
   suppressUntil = 0;
+  releaseClick = false;
   touchControls = false;
   dispose = [];
   destroy() {
     this.cancelPress();
+    this.releaseClick = false;
+    this.suppressedImage = void 0;
     this.hide();
     this.dispose.splice(0).forEach((dispose) => dispose());
+    this.resizer?.destroy();
+    this.resizer = void 0;
     this.toolbar.remove();
+  }
+  isResizing(image) {
+    return this.image === image && Boolean(this.resizer?.active);
   }
   createButton(text2, action) {
     const button = this.doc.createElement("button");
@@ -2692,6 +3023,11 @@ var ImageControls = class {
     this.settingsButton.title = "\u753B\u5ECA\u8BBE\u7F6E";
     this.settingsButton.hidden = !context.grouped;
     this.settingsButton.disabled = !context.configure;
+    this.restoreButton.hidden = !context.restore;
+    if (context.resize) {
+      this.resizer ??= new ImageResizeHandle(this.doc);
+      this.resizer.show(image, context.resize);
+    } else this.resizer?.hide();
     this.toolbar.style.visibility = "hidden";
     this.toolbar.hidden = false;
     const bounds = this.toolbar.getBoundingClientRect();
@@ -2722,6 +3058,7 @@ var ImageControls = class {
     this.cancelHide();
     this.touchControls = false;
     this.toolbar.hidden = true;
+    this.resizer?.hide();
     this.image = void 0;
     this.context = void 0;
   }
@@ -2989,10 +3326,10 @@ var LayoutPicker = class {
     let selected = choices.find((choice) => choice.layout === current?.layout && (choice.grid === void 0 || normalizeGrid(choice.grid) === normalizeGrid(current.grid ?? "")));
     if (!selected && current?.layout) {
       const actual = getDominantGridDefinition(current.layout, count);
-      const signature = (grid) => JSON.stringify([grid.columnFractions, grid.rows, grid.areas]);
+      const signature2 = (grid) => JSON.stringify([grid.columnFractions, grid.rows, grid.areas]);
       if (actual) selected = choices.find((choice) => {
         const candidate = getDominantGridDefinition(choice.layout, count);
-        return candidate && signature(candidate) === signature(actual);
+        return candidate && signature2(candidate) === signature2(actual);
       });
     }
     for (const choice of choices) {
@@ -3087,8 +3424,284 @@ function renameGroupSettings(settings, oldPath, newPath) {
   return renamed;
 }
 
+// src/image-size.ts
+function indentedCode(source, offset) {
+  const start = source.lastIndexOf("\n", Math.max(0, offset - 1)) + 1;
+  const end = source.indexOf("\n", start), line = source.slice(start, end < 0 ? source.length : end);
+  const content = line.replace(/^(?: {0,3}>[ \t]?)+/, "");
+  const indent = /^[ \t]*/.exec(content)[0].replace(/\t/g, "    ").length;
+  if (indent < 4) return false;
+  let listIndent;
+  for (const previous of source.slice(0, start).split("\n")) {
+    const value = previous.replace(/^(?: {0,3}>[ \t]?)+/, "");
+    if (!value.trim()) continue;
+    const spaces = /^[ \t]*/.exec(value)[0].replace(/\t/g, "    ").length;
+    const marker = /^[ \t]*(?:[-+*]|\d+[.)])[ \t]+/.exec(value);
+    if (marker && (spaces < 4 || listIndent !== void 0 && spaces >= listIndent)) listIndent = marker[0].replace(/\t/g, "    ").length;
+    else if (listIndent !== void 0 && spaces < listIndent) listIndent = void 0;
+  }
+  return indent >= (listIndent ?? 0) + 4;
+}
+function isStandaloneImage(source, ref) {
+  if (!Number.isInteger(ref.offset) || ref.offset < 0 || !ref.raw || source.slice(ref.offset, ref.offset + ref.raw.length) !== ref.raw) return false;
+  if (/[\r\n]/.test(ref.raw) || indentedCode(source, ref.offset)) return false;
+  const from = source.lastIndexOf("\n", Math.max(0, ref.offset - 1)) + 1;
+  const end = source.indexOf("\n", ref.offset + ref.raw.length), to = end < 0 ? source.length : end;
+  return /^(?:[ \t]*(?:>|[-+*](?=[ \t])|\d+[.)](?=[ \t]))[ \t]*)*[ \t]*$/.test(source.slice(from, ref.offset)) && /^[ \t\r]*$/.test(source.slice(ref.offset + ref.raw.length, to));
+}
+
+// src/image-presentation.ts
+var ImagePresentation = class {
+  constructor(doc, resolve2) {
+    this.doc = doc;
+    this.resolve = resolve2;
+    this.win = doc.defaultView;
+    doc.body.classList.add("ilg-local-image-controls");
+    const Observer = this.win?.MutationObserver;
+    if (Observer) {
+      this.observer = new Observer((records) => {
+        if (records.some((record2) => {
+          if (!record2.addedNodes.length && !record2.removedNodes.length) return false;
+          const target = record2.target;
+          if (target.closest?.(".ilg-image-controls,.ilg-image-resize,.ilg-popover,.nis-stage,.nis-viewer,.ilg-viewer")) return false;
+          if (target.closest?.(".markdown-preview-view,.markdown-source-view")) return true;
+          return [...Array.from(record2.addedNodes), ...Array.from(record2.removedNodes)].some((node) => node.nodeType === 1 && (node.matches("img,.markdown-preview-view,.markdown-source-view") || Boolean(node.querySelector("img,.markdown-preview-view,.markdown-source-view"))));
+        })) this.refresh();
+      });
+      this.observer.observe(doc.body, { childList: true, subtree: true });
+    }
+    doc.addEventListener("load", this.loaded, true);
+    this.refresh();
+  }
+  images = /* @__PURE__ */ new Set();
+  frames = /* @__PURE__ */ new Set();
+  sizedImages = /* @__PURE__ */ new Map();
+  sizedFrames = /* @__PURE__ */ new Map();
+  observer;
+  win;
+  frame = 0;
+  destroyed = false;
+  loaded = () => this.refresh();
+  refresh() {
+    if (this.destroyed || this.frame) return;
+    if (this.win?.requestAnimationFrame) this.frame = this.win.requestAnimationFrame(() => {
+      this.frame = 0;
+      this.update();
+    });
+    else this.update();
+  }
+  update() {
+    const images = /* @__PURE__ */ new Set();
+    const frames = /* @__PURE__ */ new Set();
+    const sizedImages = /* @__PURE__ */ new Set();
+    const sizedFrames = /* @__PURE__ */ new Set();
+    for (const image of Array.from(this.doc.querySelectorAll(".markdown-preview-view img, .markdown-source-view img"))) {
+      if (image.closest(".ilg-host,.nis-stage,.nis-viewer,.ilg-viewer,.ilg-popover,.note-cover") || image.classList.contains("cm-widgetBuffer")) continue;
+      const state = this.resolve(image);
+      if (!state) continue;
+      const frame = image.closest(".image-embed");
+      if (state.centered) {
+        images.add(image);
+        if (frame) frames.add(frame);
+      }
+      if (state.previewing) {
+        if (this.sizedImages.has(image)) sizedImages.add(image);
+        if (frame && this.sizedFrames.has(frame)) sizedFrames.add(frame);
+        continue;
+      }
+      if (state.width !== void 0) {
+        sizedImages.add(image);
+        if (!this.sizedImages.has(image)) this.sizedImages.set(image, this.capture(image, ["width", "height", "max-width", "max-height"]));
+        image.style.setProperty("width", `${state.width}px`, "important");
+        image.style.setProperty("height", "auto", "important");
+        image.style.setProperty("max-width", "100%", "important");
+        image.style.setProperty("max-height", "none", "important");
+        if (frame) {
+          sizedFrames.add(frame);
+          if (!this.sizedFrames.has(frame)) this.sizedFrames.set(frame, this.capture(frame, ["width", "height", "max-width"]));
+          frame.style.setProperty("width", state.block ? "100%" : "auto", "important");
+          frame.style.setProperty("height", "auto", "important");
+          frame.style.setProperty("max-width", "100%", "important");
+        }
+      }
+    }
+    for (const [image, styles] of this.sizedImages) if (!sizedImages.has(image)) {
+      this.restore(image, styles);
+      this.sizedImages.delete(image);
+    }
+    for (const [frame, styles] of this.sizedFrames) if (!sizedFrames.has(frame)) {
+      this.restore(frame, styles);
+      this.sizedFrames.delete(frame);
+    }
+    for (const image of this.images) if (!images.has(image)) {
+      image.classList.remove("ilg-note-image");
+      delete image.dataset.ilgImageAlign;
+    }
+    for (const frame of this.frames) if (!frames.has(frame)) frame.classList.remove("ilg-note-image-frame");
+    for (const image of images) {
+      image.classList.add("ilg-note-image");
+      image.dataset.ilgImageAlign = "center";
+    }
+    for (const frame of frames) frame.classList.add("ilg-note-image-frame");
+    this.images.clear();
+    images.forEach((image) => this.images.add(image));
+    this.frames.clear();
+    frames.forEach((frame) => this.frames.add(frame));
+  }
+  capture(element, names) {
+    return { present: element.hasAttribute("style"), values: names.map((name) => ({ name, value: element.style.getPropertyValue(name), priority: element.style.getPropertyPriority(name) })) };
+  }
+  restore(element, styles) {
+    for (const item of styles.values) {
+      if (item.value) element.style.setProperty(item.name, item.value, item.priority);
+      else element.style.removeProperty(item.name);
+    }
+    if (!styles.present && !element.style.length) element.removeAttribute("style");
+  }
+  destroy() {
+    this.destroyed = true;
+    this.observer?.disconnect();
+    if (this.frame) this.win?.cancelAnimationFrame(this.frame);
+    this.frame = 0;
+    this.doc.removeEventListener("load", this.loaded, true);
+    this.doc.body.classList.remove("ilg-local-image-controls");
+    for (const [image, styles] of this.sizedImages) this.restore(image, styles);
+    for (const [frame, styles] of this.sizedFrames) this.restore(frame, styles);
+    this.sizedImages.clear();
+    this.sizedFrames.clear();
+    for (const image of this.images) {
+      image.classList.remove("ilg-note-image");
+      delete image.dataset.ilgImageAlign;
+    }
+    for (const frame of this.frames) frame.classList.remove("ilg-note-image-frame");
+    this.images.clear();
+    this.frames.clear();
+  }
+};
+
+// src/image-settings.ts
+var documents = /* @__PURE__ */ new Map();
+var kinds = /* @__PURE__ */ new Set(["wiki", "markdown", "reference", "html"]);
+var object = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
+var validWidth = (value) => typeof value === "number" && Number.isInteger(value) && value >= 32 && value <= 16384;
+var nonnegative = (value) => typeof value === "number" && Number.isInteger(value) && value >= 0;
+var normalize = (value) => value.replace(/\r\n?/g, "\n").trim();
+function signature(refs) {
+  const text2 = JSON.stringify(refs.map((ref) => [ref.kind, ref.target, ref.raw]));
+  let first = 2166136261, second = 5381;
+  for (let index = 0; index < text2.length; index++) {
+    const code = text2.charCodeAt(index);
+    first = Math.imul(first ^ code, 16777619);
+    second = Math.imul(second, 33) ^ code;
+  }
+  return `${refs.length}:${(first >>> 0).toString(16).padStart(8, "0")}${(second >>> 0).toString(16).padStart(8, "0")}`;
+}
+function parsed(source) {
+  const cached = documents.get(source);
+  if (cached) return cached;
+  const refs = extractImages(source);
+  const headings = Array.from(source.matchAll(/^ {0,3}#{1,6}[ \t]+(.+?)[ \t]*#*[ \t]*\r?$/gm));
+  let headingIndex = -1;
+  const contexts = refs.map((ref, index) => {
+    while (headingIndex + 1 < headings.length && headings[headingIndex + 1].index < ref.offset) headingIndex++;
+    const before = source.slice(index ? refs[index - 1].offset + refs[index - 1].raw.length : 0, ref.offset);
+    const after = source.slice(ref.offset + ref.raw.length, refs[index + 1]?.offset ?? source.length);
+    return {
+      before: normalize(before).split("\n").at(-1).slice(-160),
+      after: normalize(after).split("\n")[0].slice(0, 160),
+      heading: headingIndex < 0 ? "" : normalize(headings[headingIndex][1]).slice(0, 128)
+    };
+  });
+  const result = { refs, contexts, sequence: signature(refs) };
+  if (documents.size >= 8) documents.delete(documents.keys().next().value);
+  documents.set(source, result);
+  return result;
+}
+function keyParts(key) {
+  try {
+    const value = JSON.parse(key);
+    if (Array.isArray(value) && value.length === 3 && value.every((part) => typeof part === "string" && part.length > 0)) return value;
+  } catch {
+  }
+  return void 0;
+}
+function validRecord(value) {
+  if (!object(value) || typeof value.sequence !== "string") return false;
+  const sequence = /^([1-9]\d*):[\da-f]{16}$/.exec(value.sequence);
+  return Boolean(sequence) && validWidth(value.width) && typeof value.kind === "string" && kinds.has(value.kind) && typeof value.target === "string" && value.target.length > 0 && typeof value.raw === "string" && value.raw.length > 0 && nonnegative(value.imageOrdinal) && value.imageOrdinal < Number(sequence[1]) && nonnegative(value.occurrence) && nonnegative(value.count) && value.count > 0 && value.occurrence < value.count && value.count <= Number(sequence[1]) && typeof value.before === "string" && value.before.length <= 160 && typeof value.after === "string" && value.after.length <= 160 && typeof value.heading === "string" && value.heading.length <= 128;
+}
+function currentOrdinal(document2, ref) {
+  return document2.refs.findIndex((current) => current.offset === ref.offset && current.raw === ref.raw && current.kind === ref.kind && current.target === ref.target);
+}
+function resolve(record2, document2) {
+  const candidates = document2.refs.flatMap((ref, index) => ref.kind === record2.kind && ref.target === record2.target ? [index] : []);
+  if (candidates.length === 1 && record2.count === 1) return candidates[0];
+  const contextual = candidates.filter((index) => {
+    const context = document2.contexts[index];
+    return context.before === record2.before && context.after === record2.after;
+  });
+  if (record2.before || record2.after) {
+    if (contextual.length === 1) return contextual[0];
+    const headed = contextual.filter((index) => document2.contexts[index].heading === record2.heading);
+    if (record2.heading && headed.length === 1) return headed[0];
+  }
+  if (document2.sequence === record2.sequence && candidates.length === record2.count && candidates[record2.occurrence] === record2.imageOrdinal) return record2.imageOrdinal;
+  return void 0;
+}
+function recordsFor(settings, device, path, document2, ordinal) {
+  if (!object(settings)) return [];
+  return Object.entries(settings).flatMap(([key, value]) => {
+    const parts = keyParts(key);
+    return parts && parts[0] === path && parts[1] === device && validRecord(value) && resolve(value, document2) === ordinal ? [key] : [];
+  });
+}
+function getImageWidth(settings, device, path, source, ref) {
+  const document2 = parsed(source), ordinal = currentOrdinal(document2, ref);
+  if (ordinal < 0) return;
+  const widths = new Set(recordsFor(settings, device, path, document2, ordinal).map((key) => settings[key].width));
+  return widths.size === 1 ? widths.values().next().value : void 0;
+}
+function setImageWidth(settings, device, path, source, ref, width) {
+  const base = object(settings) ? settings : {};
+  if (typeof device !== "string" || !device || typeof path !== "string" || !path) return base;
+  if (width !== null && !validWidth(width)) return base;
+  const document2 = parsed(source), ordinal = currentOrdinal(document2, ref);
+  if (ordinal < 0) return base;
+  const matches = recordsFor(base, device, path, document2, ordinal);
+  if (width === null && !matches.length) return base;
+  const result = { ...base };
+  for (const key2 of matches) delete result[key2];
+  if (width === null) return result;
+  const same = document2.refs.filter((current) => current.kind === ref.kind && current.target === ref.target);
+  const key = matches[0] ?? JSON.stringify([path, device, crypto.randomUUID()]);
+  result[key] = {
+    width,
+    kind: ref.kind,
+    target: ref.target,
+    raw: ref.raw,
+    imageOrdinal: ordinal,
+    occurrence: same.findIndex((current) => current.offset === ref.offset),
+    count: same.length,
+    sequence: document2.sequence,
+    ...document2.contexts[ordinal]
+  };
+  return result;
+}
+function renameImageSettings(settings, oldPath, newPath) {
+  const result = { ...object(settings) ? settings : {} };
+  if (oldPath === newPath) return result;
+  const moves = Object.entries(result).flatMap(([key, value]) => {
+    const parts = keyParts(key);
+    if (!parts || parts[0] !== oldPath && !parts[0].startsWith(oldPath + "/")) return [];
+    return [{ oldKey: key, newKey: JSON.stringify([newPath + parts[0].slice(oldPath.length), parts[1], parts[2]]), value }];
+  });
+  for (const move of moves) delete result[move.oldKey];
+  for (const move of moves) result[move.newKey] = move.value;
+  return result;
+}
+
 // src/main.ts
-var DEFAULT_SETTINGS = { layout: "g", fit: "contain", height: 320, gap: 8, radius: 8 };
+var DEFAULT_SETTINGS = { layout: "g", fit: "contain", height: 320, gap: 8, radius: 8, centerImages: true };
 var lineOffset = (source, line) => {
   let pos = 0;
   for (let i = 0; i < line; i++) {
@@ -3163,14 +3776,21 @@ function decorations(state, plugin, groups) {
 var ImageLayoutsEnhanced = class extends import_obsidian3.Plugin {
   settings = { ...DEFAULT_SETTINGS };
   groupSettings = {};
+  imageSettings = {};
+  deviceId = "";
+  disposed = false;
   configurationRevision = 0;
   storageQueue = Promise.resolve();
+  imageUpdateQueue = Promise.resolve();
   diagnostics = { reading: 0, live: 0, toolkit: 0, fallback: 0 };
   readingChildren = /* @__PURE__ */ new Set();
   hiddenSections = /* @__PURE__ */ new WeakMap();
   anchorChildren = /* @__PURE__ */ new WeakMap();
   selectedImages = /* @__PURE__ */ new Map();
   imageControls = /* @__PURE__ */ new Map();
+  imagePresentations = /* @__PURE__ */ new Map();
+  imageSnapshots = /* @__PURE__ */ new WeakMap();
+  sectionSnapshots = /* @__PURE__ */ new WeakMap();
   imageSources = /* @__PURE__ */ new Map();
   navigationRenderers = /* @__PURE__ */ new WeakMap();
   hostGroups = /* @__PURE__ */ new WeakMap();
@@ -3184,11 +3804,16 @@ var ImageLayoutsEnhanced = class extends import_obsidian3.Plugin {
     return value;
   }
   async onload() {
+    const deviceKey = "image-layouts-enhanced:device-id";
+    const device = this.app.loadLocalStorage(deviceKey);
+    this.deviceId = typeof device === "string" && device ? device : crypto.randomUUID();
+    if (this.deviceId !== device) this.app.saveLocalStorage(deviceKey, this.deviceId);
     try {
       const saved = await this.loadData();
       const options = normalizeOptions(saved);
-      this.settings = { layout: options.layout, fit: options.fit, height: options.height, gap: options.gap, radius: options.radius };
+      this.settings = { layout: options.layout, fit: options.fit, height: options.height, gap: options.gap, radius: options.radius, centerImages: typeof saved?.centerImages === "boolean" ? saved.centerImages : true };
       if (saved?.groupSettings && typeof saved.groupSettings === "object" && !Array.isArray(saved.groupSettings)) this.groupSettings = { ...saved.groupSettings };
+      if (saved?.imageSettings && typeof saved.imageSettings === "object" && !Array.isArray(saved.imageSettings)) this.imageSettings = { ...saved.imageSettings };
     } catch (error) {
       console.error("Image Layouts Enhanced: configuration read", error);
       new import_obsidian3.Notice("\u753B\u5ECA\u914D\u7F6E\u8BFB\u53D6\u9047\u5230\u95EE\u9898\uFF0C\u5F53\u524D\u4F7F\u7528\u9ED8\u8BA4\u663E\u793A\u53C2\u6570");
@@ -3243,19 +3868,24 @@ var ImageLayoutsEnhanced = class extends import_obsidian3.Plugin {
     this.registerEvent(this.app.vault.on("rename", (file, oldPath) => {
       const before = this.groupSettings;
       const next = renameGroupSettings(before, oldPath, file.path);
-      if (JSON.stringify(before) === JSON.stringify(next)) return;
       this.groupSettings = next;
-      void this.persistSettings().then(() => this.refreshConfiguration(file.path)).catch(() => {
+      void this.updateImageSettings((current) => renameImageSettings(current, oldPath, file.path), JSON.stringify(before) !== JSON.stringify(next)).then(() => {
+        this.refreshConfiguration(file.path);
+        this.refreshImagePresentation();
+      }).catch(() => {
         if (this.groupSettings === next) this.groupSettings = before;
       });
     }));
   }
   onunload() {
+    this.disposed = true;
     for (const [doc, controls] of this.imageControls) {
       closePopover(doc);
       controls.destroy();
     }
     this.imageControls.clear();
+    for (const presentation of this.imagePresentations.values()) presentation.destroy();
+    this.imagePresentations.clear();
     this.imageSources.clear();
     for (const child of [...this.readingChildren]) child.unload();
     this.readingChildren.clear();
@@ -3268,13 +3898,26 @@ var ImageLayoutsEnhanced = class extends import_obsidian3.Plugin {
     ctx.addChild(child);
   }
   installImageControls() {
-    const documents = /* @__PURE__ */ new Set([document, ...this.app.workspace.getLeavesOfType("markdown").map((leaf) => leaf.view.containerEl.ownerDocument)]);
-    for (const [doc, controls] of this.imageControls) if (!documents.has(doc)) {
+    const documents2 = /* @__PURE__ */ new Set([document, ...this.app.workspace.getLeavesOfType("markdown").map((leaf) => leaf.view.containerEl.ownerDocument)]);
+    for (const [doc, controls] of this.imageControls) if (!documents2.has(doc)) {
       closePopover(doc);
       controls.destroy();
       this.imageControls.delete(doc);
     }
-    for (const doc of documents) if (!this.imageControls.has(doc)) this.imageControls.set(doc, new ImageControls(doc, (image) => this.imageContext(image)));
+    for (const [doc, presentation] of this.imagePresentations) if (!documents2.has(doc)) {
+      presentation.destroy();
+      this.imagePresentations.delete(doc);
+    }
+    for (const doc of documents2) if (!this.imageControls.has(doc)) this.imageControls.set(doc, new ImageControls(doc, (image) => this.imageContext(image)));
+    for (const doc of documents2) if (!this.imagePresentations.has(doc)) this.imagePresentations.set(doc, new ImagePresentation(doc, (image) => {
+      const context = this.imageContext(image);
+      if (!context || context.grouped) return;
+      return { centered: this.settings.centerImages && context.standalone === true, block: context.block === true, width: context.width, previewing: this.imageControls.get(doc)?.isResizing(image) };
+    }));
+    this.refreshImagePresentation();
+  }
+  refreshImagePresentation() {
+    for (const presentation of this.imagePresentations.values()) presentation.refresh();
   }
   imageUrl(src, doc) {
     try {
@@ -3312,35 +3955,54 @@ var ImageLayoutsEnhanced = class extends import_obsidian3.Plugin {
     if (el.dataset.ilgSectionPath !== ctx.sourcePath) el.dataset.ilgSectionPath = ctx.sourcePath;
     if (el.dataset.ilgSectionFrom !== String(from)) el.dataset.ilgSectionFrom = String(from);
     if (el.dataset.ilgSectionTo !== String(to)) el.dataset.ilgSectionTo = String(to);
+    this.sectionSnapshots.set(el, { path: ctx.sourcePath, source: info.text });
     const used = /* @__PURE__ */ new Set();
     for (const image of images) {
-      const ref = refs.find((ref2) => !used.has(ref2.offset) && this.imageUrl(this.sourceForTarget(ref2.target, ctx.sourcePath), image.ownerDocument) === this.imageUrl(image.currentSrc || image.src, image.ownerDocument));
+      const authored = this.imageUrl(image.src, image.ownerDocument);
+      const candidates = refs.filter((ref2) => this.imageUrl(this.sourceForTarget(ref2.target, ctx.sourcePath), image.ownerDocument) === authored);
+      const duplicates = images.filter((item) => this.imageUrl(item.src, item.ownerDocument) === authored);
+      let ref = candidates.length === 1 ? candidates[0] : candidates.length === duplicates.length ? candidates[duplicates.indexOf(image)] : void 0;
+      if (!ref && !candidates.length) {
+        const rendered = this.imageUrl(image.currentSrc || image.src, image.ownerDocument);
+        const fallback = refs.filter((ref2) => this.imageUrl(this.sourceForTarget(ref2.target, ctx.sourcePath), image.ownerDocument) === rendered);
+        if (fallback.length === 1) ref = fallback[0];
+      }
+      if (ref && used.has(ref.offset)) ref = void 0;
       if (ref) {
         used.add(ref.offset);
         image.dataset.ilgSourcePath = ctx.sourcePath;
         image.dataset.ilgSourceOffset = String(ref.offset);
+        this.imageSnapshots.set(image, { path: ctx.sourcePath, source: info.text, offset: ref.offset });
       }
     }
+    this.refreshImagePresentation();
   }
   imageContext(image) {
+    if (this.disposed || image.classList.contains("cm-widgetBuffer") || image.closest(".nis-stage,.nis-viewer,.ilg-viewer,.ilg-popover,.note-cover,.markdown-embed,.internal-embed:not(.image-embed):not(.media-embed)")) return;
     const view = this.app.workspace.getLeavesOfType("markdown").map((leaf) => leaf.view).find((view2) => view2 instanceof import_obsidian3.MarkdownView && view2.containerEl.contains(image));
     const path = view?.file?.path;
     if (!view || !path) return;
+    const section = image.closest("[data-ilg-section-path]");
+    if (image.dataset.ilgSourcePath && image.dataset.ilgSourcePath !== path || section?.dataset.ilgSectionPath && section.dataset.ilgSectionPath !== path) return;
     const host = image.closest(".ilg-host"), mounted = host ? this.hostGroups.get(host) : void 0;
     if (mounted && mounted.path !== path) return;
     const source = view.getMode() === "source" ? view.editor.getValue() : view.data ?? this.imageSources.get(path) ?? this.parsedSources.get(path)?.source ?? mounted?.source;
     if (source === void 0) return;
-    const parsed = this.parsed(source, path);
+    const parsed2 = this.parsed(source, path);
     let group = mounted?.group;
     if (!group) {
-      const matching = parsed.refs.filter((ref2) => this.imageUrl(this.sourceForTarget(ref2.target, path), image.ownerDocument) === this.imageUrl(image.currentSrc || image.src, image.ownerDocument));
-      let ref = image.dataset.ilgSourcePath === path ? matching.find((ref2) => ref2.offset === Number(image.dataset.ilgSourceOffset)) : void 0;
-      const section = image.closest("[data-ilg-section-path]");
-      if (!ref && section?.dataset.ilgSectionPath === path) {
+      const authored = this.imageUrl(image.src, image.ownerDocument);
+      const authoredMatches = parsed2.refs.filter((ref2) => this.imageUrl(this.sourceForTarget(ref2.target, path), image.ownerDocument) === authored);
+      const fallback = authoredMatches.length ? [] : parsed2.refs.filter((ref2) => this.imageUrl(this.sourceForTarget(ref2.target, path), image.ownerDocument) === this.imageUrl(image.currentSrc || image.src, image.ownerDocument));
+      const matching = authoredMatches.length ? authoredMatches : fallback.length === 1 ? fallback : [];
+      const snapshot = this.imageSnapshots.get(image), sectionSnapshot = section ? this.sectionSnapshots.get(section) : void 0;
+      if (view.getMode() !== "source" && (snapshot && snapshot.source !== source || sectionSnapshot && sectionSnapshot.source !== source)) return;
+      let ref = snapshot?.path === path && snapshot.source === source ? matching.find((ref2) => ref2.offset === snapshot.offset) : void 0;
+      if (!ref && section?.dataset.ilgSectionPath === path && sectionSnapshot?.source === source) {
         const candidates = matching.filter((ref2) => ref2.offset >= Number(section.dataset.ilgSectionFrom) && ref2.offset < Number(section.dataset.ilgSectionTo));
         if (candidates.length === 1) ref = candidates[0];
         else if (candidates.length > 1) {
-          const duplicates = Array.from(section.querySelectorAll("img")).filter((item) => !item.closest(".ilg-host") && this.imageUrl(item.currentSrc || item.src, item.ownerDocument) === this.imageUrl(image.currentSrc || image.src, image.ownerDocument));
+          const duplicates = Array.from(section.querySelectorAll("img")).filter((item) => !item.closest(".ilg-host") && this.imageUrl(item.src, item.ownerDocument) === authored);
           if (duplicates.length === candidates.length) ref = candidates[duplicates.indexOf(image)];
         }
       }
@@ -3351,17 +4013,31 @@ var ImageLayoutsEnhanced = class extends import_obsidian3.Plugin {
           const from = source.lastIndexOf("\n", Math.max(0, pos - 1)) + 1;
           const end = source.indexOf("\n", pos);
           const to = end < 0 ? source.length : end;
-          ref = matching.find((ref2) => ref2.offset <= pos && ref2.offset + ref2.raw.length >= pos) ?? matching.find((ref2) => ref2.offset >= from && ref2.offset <= to);
+          const exact = matching.filter((ref2) => ref2.offset <= pos && ref2.offset + ref2.raw.length > pos), line = matching.filter((ref2) => ref2.offset >= from && ref2.offset <= to);
+          ref = exact.length === 1 ? exact[0] : line.length === 1 ? line[0] : void 0;
         } catch {
         }
       }
       if (!ref && matching.length === 1) ref = matching[0];
       if (!ref) return;
-      group = parsed.groups.find((group2) => ref.offset >= group2.bodyFrom && ref.offset < group2.bodyTo);
-      if (!group) return { grouped: false, layout: () => void this.chooseImageGroup(view, path, source, ref.offset, image).catch((error) => {
-        console.error("Image Layouts Enhanced", error);
-        new import_obsidian3.Notice("\u56FE\u7247\u5E03\u5C40\u6253\u5F00\u9047\u5230\u95EE\u9898\uFF0C\u8BF7\u91CD\u8BD5");
-      }) };
+      group = parsed2.groups.find((group2) => ref.offset >= group2.bodyFrom && ref.offset < group2.bodyTo);
+      if (!group) {
+        const selected2 = ref;
+        const save = (width) => this.resizeImage(view, path, source, selected2, width);
+        return {
+          grouped: false,
+          block: isStandaloneImage(source, selected2),
+          standalone: isStandaloneImage(source, selected2) && !/(?:^|\|)(?:left|right|inline|inl|l|r)(?:\||$)/i.test(selected2.alt),
+          width: getImageWidth(this.imageSettings, this.deviceId, path, source, selected2),
+          layout: () => void this.chooseImageGroup(view, path, source, selected2.offset, image).catch((error) => {
+            console.error("Image Layouts Enhanced", error);
+            new import_obsidian3.Notice("\u56FE\u7247\u5E03\u5C40\u6253\u5F00\u9047\u5230\u95EE\u9898\uFF0C\u8BF7\u91CD\u8BD5");
+          }),
+          resize: { save: (width) => save(width) },
+          restore: () => void save(null).catch(() => {
+          })
+        };
+      }
     }
     const selected = group;
     const guarded = (action) => void this.sameSource(view, path, source).then((valid) => {
@@ -3374,6 +4050,34 @@ var ImageLayoutsEnhanced = class extends import_obsidian3.Plugin {
       configure: () => guarded(() => new GalleryConfiguration(image, getEffectiveOptions(selected, path, this.groupSettings), (patch) => this.editFile(path, selected, patch)).open())
     };
   }
+  async resizeImage(view, path, source, ref, width) {
+    try {
+      const file = view.file, mode = view.getMode(), editor = mode === "source" ? view.editor : void 0;
+      const device = this.deviceId;
+      const valid = () => !this.disposed && !!file && file.path === path && view.file === file && view.getMode() === mode && this.app.workspace.getLeavesOfType("markdown").some((leaf) => leaf.view === view);
+      await this.updateImageSettings(async (settings) => {
+        if (!valid()) throw new Error("\u56FE\u7247\u6240\u5C5E\u9875\u9762\u5DF2\u5207\u6362\uFF0C\u8BF7\u5728\u5F53\u524D\u56FE\u7247\u4E0A\u91CD\u65B0\u8C03\u6574\u5C3A\u5BF8");
+        const current = editor ? editor.getValue() : await this.app.vault.cachedRead(file);
+        if (!valid() || current !== source || editor && editor.getValue() !== source) throw new Error("\u7B14\u8BB0\u5185\u5BB9\u5DF2\u66F4\u65B0\uFF0C\u8BF7\u5728\u5F53\u524D\u56FE\u7247\u4E0A\u91CD\u65B0\u8C03\u6574\u5C3A\u5BF8");
+        return setImageWidth(settings, device, path, source, ref, width);
+      });
+    } catch (error) {
+      this.refreshImagePresentation();
+      new import_obsidian3.Notice(error instanceof Error ? error.message : "\u56FE\u7247\u5C3A\u5BF8\u4FDD\u5B58\u9047\u5230\u95EE\u9898\uFF0C\u8BF7\u91CD\u65B0\u8C03\u6574");
+      throw error;
+    }
+  }
+  updateImageSettings(change, force = false) {
+    const update = this.imageUpdateQueue.catch(() => {
+    }).then(async () => {
+      const next = await change(this.imageSettings);
+      if (JSON.stringify(next) === JSON.stringify(this.imageSettings) && !force) return;
+      await this.persistSettings(next);
+      this.refreshImagePresentation();
+    });
+    this.imageUpdateQueue = update;
+    return update;
+  }
   async sameSource(view, path, source) {
     const attached = this.app.workspace.getLeavesOfType("markdown").some((leaf) => leaf.view === view);
     const current = attached && view.file?.path === path ? view.getMode() === "source" ? view.editor.getValue() : await this.app.vault.cachedRead(view.file) : void 0;
@@ -3385,10 +4089,10 @@ var ImageLayoutsEnhanced = class extends import_obsidian3.Plugin {
   }
   async chooseImageGroup(view, path, source, offset, anchorEl) {
     if (!await this.sameSource(view, path, source)) return;
-    const parsed = this.parsed(source, path), refs = parsed.refs;
+    const parsed2 = this.parsed(source, path), refs = parsed2.refs;
     const anchor = refs.findIndex((ref) => ref.offset === offset);
     if (anchor < 0) return;
-    const inside = (index) => parsed.groups.some((group) => refs[index].offset >= group.from && refs[index].offset < group.to);
+    const inside = (index) => parsed2.groups.some((group) => refs[index].offset >= group.from && refs[index].offset < group.to);
     const separated = (first2, last2) => {
       const between = source.slice(refs[first2].offset + refs[first2].raw.length, refs[last2].offset);
       return /^ {0,3}#{1,6}\s/m.test(between) || between.split("\n").filter((line) => line.trim()).length > 12;
@@ -3437,10 +4141,27 @@ var ImageLayoutsEnhanced = class extends import_obsidian3.Plugin {
       new import_obsidian3.Notice("\u56FE\u7247\u5E03\u5C40\u4FDD\u5B58\u9047\u5230\u95EE\u9898\uFF0C\u8BF7\u91CD\u8BD5");
     }), anchorEl, this.settings).open(), anchorEl).open();
   }
-  async persistSettings() {
+  async persistSettings(imageOverride) {
     const snapshot = { ...this.settings, groupSettings: JSON.parse(JSON.stringify(this.groupSettings)) };
+    const device = this.deviceId;
+    const own2 = (key) => {
+      try {
+        const value = JSON.parse(key);
+        return Array.isArray(value) && value.length === 3 && value[1] === device;
+      } catch {
+        return false;
+      }
+    };
     const write = this.storageQueue.catch(() => {
-    }).then(() => this.saveData(snapshot));
+    }).then(async () => {
+      const images = imageOverride ?? this.imageSettings, latest = await this.loadData();
+      const previous = latest?.imageSettings && typeof latest.imageSettings === "object" && !Array.isArray(latest.imageSettings) ? latest.imageSettings : images;
+      const merged = {};
+      for (const [key, value] of Object.entries(previous)) if (!own2(key)) merged[key] = value;
+      for (const [key, value] of Object.entries(images)) if (own2(key)) merged[key] = value;
+      await this.saveData({ ...snapshot, imageSettings: merged });
+      this.imageSettings = merged;
+    });
     this.storageQueue = write;
     try {
       await write;
@@ -3582,13 +4303,13 @@ var ImageLayoutsEnhanced = class extends import_obsidian3.Plugin {
     if (!(file instanceof import_obsidian3.TFile)) throw Error("\u7B14\u8BB0\u4F4D\u7F6E\u5DF2\u66F4\u65B0\uFF0C\u8BF7\u91CD\u65B0\u6253\u5F00\u8BBE\u7F6E");
     const view = this.app.workspace.getLeavesOfType("markdown").map((leaf) => leaf.view).find((view2) => view2 instanceof import_obsidian3.MarkdownView && view2.file?.path === path && view2.getMode() === "source");
     const source = view ? view.editor.getValue() : await this.app.vault.cachedRead(file);
-    const parsed = parseGroups(source), current = resolveGallerySourceTarget(source, group)?.group;
+    const parsed2 = parseGroups(source), current = resolveGallerySourceTarget(source, group)?.group;
     if (!current) throw Error("\u56FE\u7247\u7EC4\u5DF2\u66F4\u65B0\uFF0C\u8BF7\u5728\u5F53\u524D\u753B\u5ECA\u4E0A\u91CD\u65B0\u6253\u5F00\u8BBE\u7F6E");
     let edit;
     if (patch === "unwrap") edit = current.kind === "comment" ? unwrapGroup(source, current) : editLegacyGroup(source, current, "unwrap");
     else {
       const effective = getEffectiveOptions(current, path, this.groupSettings);
-      const duplicate = current.kind === "comment" && parsed.filter((item) => item.options.id === current.options.id).length > 1;
+      const duplicate = current.kind === "comment" && parsed2.filter((item) => item.options.id === current.options.id).length > 1;
       const id = effective.id && !duplicate ? effective.id : shortId();
       const options = normalizeOptions({ ...effective, ...patch, id });
       await this.storeConfigurations({ [groupKey(path, id)]: getStoredOptions(options) });
@@ -3663,7 +4384,7 @@ var ImageLayoutsEnhanced = class extends import_obsidian3.Plugin {
   images(group, path, source) {
     const refs = this.parsed(source, path).refs.filter((ref) => ref.offset >= group.bodyFrom && ref.offset < group.bodyTo);
     const extracted = group.kind === "fence" ? extractImages(group.body).map((ref) => ({ ...ref, offset: ref.offset + group.bodyFrom, line: ref.line + source.slice(0, group.bodyFrom).split("\n").length - 1 })) : refs;
-    const resolve = (target) => {
+    const resolve2 = (target) => {
       if (/^https?:\/\/|^data:image\//i.test(target)) return target;
       let decoded = target;
       try {
@@ -3675,7 +4396,7 @@ var ImageLayoutsEnhanced = class extends import_obsidian3.Plugin {
     };
     const images = extracted.map((ref, index) => {
       const alt = ref.kind === "wiki" ? ref.alt.split("|").filter((part) => !/^\d+(?:x\d+)?$/.test(part.trim())).join("|") : ref.alt;
-      const src = resolve(ref.target);
+      const src = resolve2(ref.target);
       return { src, target: ref.target, alt: group.options.descriptions[index] ?? alt, line: ref.line, sourceOffset: ref.offset, missing: !src };
     });
     if (group.options.fromFolder) {
@@ -3811,6 +4532,13 @@ var GallerySettings = class extends import_obsidian3.PluginSettingTab {
   }
   display() {
     this.containerEl.empty();
+    this.containerEl.createEl("h2", { text: "\u6B63\u6587\u56FE\u7247" });
+    new import_obsidian3.Setting(this.containerEl).setName("\u6B63\u6587\u72EC\u7ACB\u56FE\u7247\u5C45\u4E2D").setDesc("\u666E\u901A\u72EC\u7ACB\u56FE\u7247\u5C45\u4E2D\u663E\u793A\uFF1B\u60AC\u505C\u6216\u957F\u6309\u540E\u53EF\u62D6\u52A8\u53F3\u4E0B\u89D2\u624B\u67C4\uFF0C\u5C3A\u5BF8\u4FDD\u5B58\u5728\u672C\u8BBE\u5907\uFF0C\u6062\u590D\u5C3A\u5BF8\u53EF\u6CBF\u7528\u7B14\u8BB0\u539F\u6709\u663E\u793A\u3002").addToggle((toggle) => toggle.setValue(this.plugin.settings.centerImages).onChange(async (value) => {
+      this.plugin.settings.centerImages = value;
+      this.plugin.refreshImagePresentation();
+      await this.plugin.persistSettings().catch(() => {
+      });
+    }));
     this.containerEl.createEl("h2", { text: "\u56FE\u7247\u753B\u5ECA" });
     this.containerEl.createEl("p", { text: "\u9009\u4E2D\u56FE\u7247\u5F15\u7528\uFF0C\u6267\u884C\u201C\u5C06\u9009\u4E2D\u56FE\u7247\u7EC4\u6210\u753B\u5ECA\u201D\u3002\u6BCF\u4E2A\u56FE\u7247\u7EC4\u4FDD\u5B58\u81EA\u5DF1\u7684\u5E03\u5C40\uFF0C\u653E\u5927\u67E5\u770B\u4F18\u5148\u8054\u52A8 Image Toolkit\u3002" });
     new import_obsidian3.Setting(this.containerEl).setName("\u65B0\u56FE\u7247\u7EC4\u9ED8\u8BA4\u5E03\u5C40").addDropdown((dropdown) => {

@@ -1,0 +1,21 @@
+/* 插件承接正文独立图片居中；本设备宽度由展示控制器叠加。 */
+body.ilg-local-image-controls :is(.markdown-preview-view,.markdown-source-view) .image-resize-corner {
+  display: none !important;
+  pointer-events: none !important;
+}
+.markdown-preview-view .ilg-note-image-frame,
+.markdown-source-view .ilg-note-image-frame {
+  display: flex !important;
+  justify-content: center !important;
+  width: 100% !important;
+  height: auto !important;
+  overflow: visible !important;
+}
+.ilg-note-image-frame .image-wrapper { height: auto !important; max-width: 100%; overflow: visible !important; }
+.markdown-preview-view img.ilg-note-image,
+.markdown-source-view img.ilg-note-image {
+  display: block !important;
+  margin: 1em auto !important;
+  height: auto;
+  max-width: 100%;
+}

@@ -1,5 +1,6 @@
 {
   "date": "2026-11-12",
+  "tag": "android-20261112-images",
   "plugins": [
     {
       "id": "float-search",
@@ -8,11 +9,6 @@
       "sourceDirectory": "source/float-search",
       "minAppVersion": "1.2.0",
       "isDesktopOnly": false,
-      "baselineTests": {
-        "date": "2026-11-11",
-        "version": "4.4.4",
-        "automatedTestsPassed": 205
-      },
       "files": {
         "main.js": "f73d7fb1a374bbba6730f56a7dac0690bd5869a8c0052590c914b52a83fccdf9",
         "manifest.json": "1b21623bb16e7af2d2c8812d45c51612d272f9bbac58446d3eba1034b3dfb7f4",
@@ -26,11 +22,6 @@
       "sourceDirectory": "source/image-toolkit-upgraded",
       "minAppVersion": "1.8.7",
       "isDesktopOnly": false,
-      "baselineTests": {
-        "date": "2026-11-11",
-        "version": "1.4.18",
-        "automatedTestsPassed": 47
-      },
       "files": {
         "main.js": "2366add8b6b01ca21f700dfd3b1014e005f873f29f19fd3fd9d69e6fca3151b2",
         "manifest.json": "6a8ecb15c3d2de67cfdfc877baeac0741c6b90a8ddea74f90c59296fd88da100",
@@ -39,20 +30,15 @@
     },
     {
       "id": "image-layouts-enhanced",
-      "name": "图片布局",
-      "version": "0.1.7",
+      "name": "图片布局与正文图片控制",
+      "version": "0.1.8",
       "sourceDirectory": "source/image-layouts-enhanced",
-      "minAppVersion": "1.7.2",
+      "minAppVersion": "1.8.7",
       "isDesktopOnly": false,
-      "baselineTests": {
-        "date": "2026-11-11",
-        "version": "0.1.7",
-        "automatedTestsPassed": 137
-      },
       "files": {
-        "main.js": "f1aef8bd64d2fd13368e04fde1f7530bcbf5eecb08e9e0d8a144048e9262c82b",
-        "manifest.json": "52e98f58f3c0fff4a7e0eff782f4e2d5cc6dd93d0b6cb6bb83db7fd5e5d28bf1",
-        "styles.css": "239a9b8f5b1d5427104a4b883c10f3f815dc6ce1e069c9f5b9839e3e8d1a9dba"
+        "main.js": "8067bab4eb480c888dc8d881733d882fe63a483bed37a64c12672a955997873e",
+        "manifest.json": "9c97606059927509001993d2f4f22a4818885ce44c853f3f928c9c0474de1e84",
+        "styles.css": "28eaf4c31a53d558a338ebe75983620ba0e8232cd1495fb36edabbb7f2f6c753"
       }
     },
     {
@@ -62,11 +48,6 @@
       "sourceDirectory": "source/table-column-resize-custom",
       "minAppVersion": "1.4.0",
       "isDesktopOnly": false,
-      "baselineTests": {
-        "date": "2026-11-11",
-        "version": "1.0.4",
-        "automatedTestsPassed": 18
-      },
       "files": {
         "main.js": "eb7e477afb2bde9e8d1c29dc07d87a5bdd140cd257eea82b2e8b9c318e424c82",
         "manifest.json": "76f2035bd855f96d9e4f3b3c62176442bef3db75530ec9a184e328247911412e",
@@ -80,11 +61,6 @@
       "sourceDirectory": "source/citation-badges",
       "minAppVersion": "1.8.0",
       "isDesktopOnly": false,
-      "baselineTests": {
-        "date": "2026-11-11",
-        "version": "0.3.5",
-        "automatedTestsPassed": 53
-      },
       "files": {
         "main.js": "c890fd687552c4e38f5fd9c3dc1b0e838aff959878d7c3db0a75ff7c32cf8810",
         "manifest.json": "6dfc80252ec674bd737334594f4cec8a4b132ca183e7866269255118b3abff87",
@@ -98,21 +74,10 @@
       "sourceDirectory": "source/transparent-outline",
       "minAppVersion": "1.5.0",
       "isDesktopOnly": false,
-      "baselineTests": {
-        "date": "2026-11-11",
-        "version": "0.3.3",
-        "automatedTestsPassed": 6
-      },
       "files": {
         "main.js": "d11875053e2407b26a33e7a84750d451015206aa1c4ee971e4059d32cf032bf8",
         "manifest.json": "406ce940ddfd3ab41d58a7f018f312389425a103a67277ca31640b45e91d0588",
         "styles.css": "12b3716b76b801f6feef46f9ccfe7410e6a42fb310a9611e8430fa445c6252a7"
-      },
-      "currentReleaseValidation": {
-        "date": "2026-11-12",
-        "unitTestsPassed": 6,
-        "browserCasesPassed": 32,
-        "obsidianMobileCasesPassed": 4
       }
     }
   ]

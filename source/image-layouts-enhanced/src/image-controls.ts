@@ -1,7 +1,14 @@
+import {ImageResizeHandle} from './image-resize';
+
 export interface ImageControlContext {
   grouped: boolean;
   layout: () => void;
   configure?: () => void;
+  standalone?: boolean;
+  block?: boolean;
+  width?: number;
+  resize?: {save: (width: number) => Promise<void>};
+  restore?: () => void;
 }
 
 /** Lightweight controls above the original image, without modifying its wrapper or events. */
@@ -9,6 +16,8 @@ export class ImageControls {
   private readonly toolbar: HTMLDivElement;
   private readonly layoutButton: HTMLButtonElement;
   private readonly settingsButton: HTMLButtonElement;
+  private readonly restoreButton: HTMLButtonElement;
+  private resizer?: ImageResizeHandle;
   private readonly ownerWindow: Window | null;
   private image: HTMLImageElement | undefined;
   private context: ImageControlContext | undefined;
@@ -17,6 +26,7 @@ export class ImageControls {
   private press: {id:number;x:number;y:number;image:HTMLImageElement} | undefined;
   private suppressedImage: HTMLImageElement | undefined;
   private suppressUntil = 0;
+  private releaseClick = false;
   private touchControls = false;
   private readonly dispose: Array<() => void> = [];
 
@@ -30,21 +40,24 @@ export class ImageControls {
     this.layoutButton = this.createButton('布局', () => this.context?.layout);
     this.settingsButton = this.createButton('设置', () => this.context?.configure);
     this.settingsButton.setAttribute('aria-label', '画廊设置');
+    this.restoreButton = this.createButton('恢复尺寸', () => this.context?.restore);
+    this.restoreButton.setAttribute('aria-label', '恢复笔记中的图片尺寸');
     doc.body.appendChild(this.toolbar);
 
     // A stationary long press exposes the same controls as desktop hover. Scroll and pinch cancel it.
     this.listen(doc, 'pointerdown', event => {
       const pointer=event as PointerEvent;
-      if(pointer.pointerType!=='touch')return;
-      if(this.press){this.cancelPress();return;}
+      this.releaseClick=false;this.suppressedImage=undefined;
       const target=this.element(event.target);
-      if(target&&this.toolbar.contains(target))return;
+      if(target&&(this.toolbar.contains(target)||this.resizer?.contains(target)))return;
+      if(pointer.pointerType!=='touch'){if(!this.findImage(target))this.hide();return;}
+      if(this.press){this.cancelPress();return;}
       const image=this.findImage(target);
       if(!image){this.hide();return;}
       this.press={id:pointer.pointerId,x:pointer.clientX,y:pointer.clientY,image};
       this.pressTimer=this.ownerWindow?.setTimeout(()=>{
         if(!this.press)return;
-        this.touchControls=true;this.suppressedImage=image;this.suppressUntil=Date.now()+1800;
+        this.touchControls=true;this.suppressedImage=image;this.releaseClick=true;this.suppressUntil=Date.now()+1800;
         this.show(image);this.cancelPress();
       },450);
     },true);
@@ -54,7 +67,13 @@ export class ImageControls {
     },true);
     for(const type of ['pointerup','pointercancel'])this.listen(doc,type,()=>this.cancelPress(),true);
     this.listen(doc,'click',event=>{
-      if(Date.now()<this.suppressUntil&&this.findImage(this.element(event.target))===this.suppressedImage){event.preventDefault();event.stopImmediatePropagation();this.suppressedImage=undefined;}
+      const click=event as MouseEvent&{pointerType?:string};
+      const compatible=click.detail!==0||click.pointerType==='touch';
+      // 新工具栏可能出现在原触点下；仅吞掉这次长按抬手产生的兼容点击。
+      if(this.releaseClick&&Date.now()<this.suppressUntil&&compatible){
+        event.preventDefault();event.stopImmediatePropagation();this.releaseClick=false;this.suppressedImage=undefined;return;
+      }
+      if(compatible&&this.suppressedImage&&Date.now()<this.suppressUntil&&this.findImage(this.element(event.target))===this.suppressedImage){event.preventDefault();event.stopImmediatePropagation();this.suppressedImage=undefined;}
     },true);
     this.listen(doc,'contextmenu',event=>{
       if(this.touchControls&&this.findImage(this.element(event.target))===this.image){event.preventDefault();event.stopPropagation();}
@@ -63,22 +82,23 @@ export class ImageControls {
     this.listen(doc, 'pointerover', (event) => {
       if((event as PointerEvent).pointerType==='touch')return;
       const target = this.element(event.target);
-      if (target && this.toolbar.contains(target)) { this.cancelHide(); return; }
+      if (target && (this.toolbar.contains(target)||this.resizer?.contains(target))) { this.cancelHide(); return; }
+      if(this.resizer?.active)return;
       const image = this.findImage(target);
       if (image) this.show(image);
     });
     this.listen(doc, 'pointerout', (event) => {
       const pointer = event as PointerEvent;
-      if(pointer.pointerType==='touch'||this.touchControls)return;
+      if(pointer.pointerType==='touch'||this.touchControls||this.resizer?.active)return;
       const target = this.element(pointer.target);
-      if (!target || (this.findImage(target) !== this.image && !this.toolbar.contains(target))) return;
+      if (!target || (this.findImage(target) !== this.image && !this.toolbar.contains(target)&&!this.resizer?.contains(target))) return;
       const related = this.element(pointer.relatedTarget);
-      if (related && (this.findImage(related) === this.image || this.toolbar.contains(related))) this.cancelHide();
+      if (related && (this.findImage(related) === this.image || this.toolbar.contains(related)||this.resizer?.contains(related))) this.cancelHide();
       else this.scheduleHide();
     });
     this.listen(doc, 'focusin', (event) => {
       const target = this.element(event.target);
-      if (target && this.toolbar.contains(target)) { this.cancelHide(); return; }
+      if (target && (this.toolbar.contains(target)||this.resizer?.contains(target))) { this.cancelHide(); return; }
       const image = this.findImage(target);
       if (image) this.show(image);
       else this.scheduleHide();
@@ -95,10 +115,15 @@ export class ImageControls {
 
   destroy(): void {
     this.cancelPress();
+    this.releaseClick=false;this.suppressedImage=undefined;
     this.hide();
     this.dispose.splice(0).forEach(dispose => dispose());
+    this.resizer?.destroy();
+    this.resizer=undefined;
     this.toolbar.remove();
   }
+
+  isResizing(image:HTMLImageElement):boolean{return this.image===image&&Boolean(this.resizer?.active);}
 
   private createButton(text: string, action: () => (() => void) | undefined): HTMLButtonElement {
     const button = this.doc.createElement('button');
@@ -146,6 +171,9 @@ export class ImageControls {
     this.settingsButton.title = '画廊设置';
     this.settingsButton.hidden = !context.grouped;
     this.settingsButton.disabled = !context.configure;
+    this.restoreButton.hidden = !context.restore;
+    if(context.resize){this.resizer??=new ImageResizeHandle(this.doc);this.resizer.show(image,context.resize);}
+    else this.resizer?.hide();
     this.toolbar.style.visibility = 'hidden';
     this.toolbar.hidden = false;
     const bounds = this.toolbar.getBoundingClientRect();
@@ -178,6 +206,7 @@ export class ImageControls {
   private hide(): void {
     this.cancelHide();this.touchControls=false;
     this.toolbar.hidden = true;
+    this.resizer?.hide();
     this.image = undefined;
     this.context = undefined;
   }

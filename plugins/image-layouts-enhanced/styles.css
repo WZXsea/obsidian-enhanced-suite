@@ -575,3 +575,35 @@
 .ilg-configuration :disabled { opacity: .55; }
 @supports not (backdrop-filter: blur(1px)) { .ilg-popover.ilg-configuration { background: var(--background-primary); } }
 @media (prefers-reduced-motion: reduce) { .ilg-configuration *, .ilg-configuration *::before { transition: none !important; } .ilg-config-slider-field.is-adjusting .ilg-config-value, .ilg-configuration .ilg-config-footer button:active, .ilg-configuration button.ilg-config-fit-button:active { transform: none !important; } }
+
+/* 插件承接正文独立图片居中；本设备宽度由展示控制器叠加。 */
+body.ilg-local-image-controls :is(.markdown-preview-view,.markdown-source-view) .image-resize-corner {
+  display: none !important;
+  pointer-events: none !important;
+}
+.markdown-preview-view .ilg-note-image-frame,
+.markdown-source-view .ilg-note-image-frame {
+  display: flex !important;
+  justify-content: center !important;
+  width: 100% !important;
+  height: auto !important;
+  overflow: visible !important;
+}
+.ilg-note-image-frame .image-wrapper { height: auto !important; max-width: 100%; overflow: visible !important; }
+.markdown-preview-view img.ilg-note-image,
+.markdown-source-view img.ilg-note-image {
+  display: block !important;
+  margin: 1em auto !important;
+  height: auto;
+  max-width: 100%;
+}
+
+.ilg-image-resize { position: fixed; z-index: var(--layer-popover, 50); width: 0; height: 0; pointer-events: none; }
+.ilg-image-resize[hidden] { display: none !important; }
+.ilg-image-resize .ilg-image-resize-handle { position: absolute; display: grid; place-items: center; width: 24px; min-width: 24px; height: 24px; min-height: 24px; margin: 0; padding: 0; transform: translate(-50%, -50%); border: 1px solid var(--background-modifier-border, #8b8b99); border-radius: 6px; background: var(--background-primary, #fff); color: var(--text-accent, #5866c8); box-shadow: 0 2px 7px rgb(0 0 0 / .18); pointer-events: auto; touch-action: none; cursor: nwse-resize; }
+.ilg-image-resize-handle::before { content: ''; width: 9px; height: 9px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; pointer-events: none; }
+.ilg-image-resize .ilg-image-resize-handle:focus-visible { outline: 2px solid var(--interactive-accent, #5866c8); outline-offset: 2px; }
+.ilg-image-resize .ilg-image-resize-handle:disabled { cursor: progress; }
+.ilg-image-resize-readout { display: none; position: absolute; right: 16px; bottom: 16px; padding: 4px 7px; border-radius: 5px; background: var(--background-primary, #fff); color: var(--text-normal, #222); box-shadow: 0 2px 8px rgb(0 0 0 / .16); font: 12px var(--font-interface, system-ui); font-variant-numeric: tabular-nums; white-space: nowrap; pointer-events: none; }
+.ilg-image-resize.is-dragging .ilg-image-resize-readout { display: block; }
+@media (pointer: coarse) { .ilg-image-resize .ilg-image-resize-handle { width: 44px; min-width: 44px; height: 44px; min-height: 44px; } }

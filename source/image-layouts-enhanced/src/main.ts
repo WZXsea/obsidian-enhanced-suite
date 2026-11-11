@@ -7,7 +7,7 @@ import {EditorState, StateField} from '@codemirror/state';
 import {Decoration, DecorationSet, EditorView, WidgetType} from '@codemirror/view';
 import {DEFAULT_OPTIONS, GalleryGroup, GalleryImage, GalleryOptions, LAYOUT_LABELS, Layout} from './types';
 import {normalizeOptions, parseGroups, serializeOpen, updateGroup, unwrapGroup, wrapSelection} from './model';
-import {extractImages, getSupplementalMarkdown} from './images';
+import {extractImages, getSupplementalMarkdown,type ImageReference} from './images';
 import {GalleryRenderer} from './renderer';
 import {openGalleryImage} from './integration';
 import {editLegacyGroup} from './source-edits';
@@ -20,9 +20,12 @@ import {GalleryGroupPicker} from './group-picker';
 import {LayoutPicker} from './layout-picker';
 import {closePopover} from './popover';
 import {GroupSettings,groupKey,getEffectiveOptions,getStoredOptions,renameGroupSettings} from './configuration';
+import {isStandaloneImage} from './image-size';
+import {ImagePresentation} from './image-presentation';
+import {getImageWidth,setImageWidth,renameImageSettings,type ImageSettings} from './image-settings';
 
-interface Settings {layout:Layout; fit:GalleryOptions['fit']; height:number; gap:number; radius:number}
-const DEFAULT_SETTINGS:Settings={layout:'g',fit:'contain',height:320,gap:8,radius:8};
+interface Settings {layout:Layout; fit:GalleryOptions['fit']; height:number; gap:number; radius:number;centerImages:boolean}
+const DEFAULT_SETTINGS:Settings={layout:'g',fit:'contain',height:320,gap:8,radius:8,centerImages:true};
 type Edit={from:number;to:number;insert:string};
 const lineOffset=(source:string,line:number)=>{let pos=0;for(let i=0;i<line;i++){const next=source.indexOf('\n',pos);if(next<0)return source.length;pos=next+1;}return pos;};
 const shortId=()=>crypto.randomUUID().replace(/-/g,'').slice(0,10);
@@ -65,14 +68,21 @@ function decorations(state:EditorState,plugin:ImageLayoutsEnhanced,groups:Galler
 export default class ImageLayoutsEnhanced extends Plugin {
   settings:Settings={...DEFAULT_SETTINGS};
   groupSettings:GroupSettings={};
+  imageSettings:ImageSettings={};
+  private deviceId='';
+  private disposed=false;
   configurationRevision=0;
   private storageQueue:Promise<void>=Promise.resolve();
+  private imageUpdateQueue:Promise<void>=Promise.resolve();
   diagnostics={reading:0,live:0,toolkit:0,fallback:0};
   private readingChildren=new Set<MarkdownRenderChild>();
   private hiddenSections=new WeakMap<HTMLElement,{display:string;count:number}>();
   private anchorChildren=new WeakMap<HTMLElement,GalleryChild>();
   private selectedImages=new Map<string,number>();
   private imageControls=new Map<Document,ImageControls>();
+  private imagePresentations=new Map<Document,ImagePresentation>();
+  private imageSnapshots=new WeakMap<HTMLImageElement,{path:string;source:string;offset:number}>();
+  private sectionSnapshots=new WeakMap<HTMLElement,{path:string;source:string}>();
   private imageSources=new Map<string,string>();
   private navigationRenderers=new WeakMap<HTMLElement,{path:string;images:GalleryImage[];renderer:GalleryRenderer}>();
   private hostGroups=new WeakMap<HTMLElement,{group:GalleryGroup;path:string;source:string}>();
@@ -84,11 +94,16 @@ export default class ImageLayoutsEnhanced extends Plugin {
     this.parsedSources.set(path,value);return value;
   }
   async onload(){
+    const deviceKey='image-layouts-enhanced:device-id';
+    const device=this.app.loadLocalStorage(deviceKey);
+    this.deviceId=typeof device==='string'&&device?device:crypto.randomUUID();
+    if(this.deviceId!==device)this.app.saveLocalStorage(deviceKey,this.deviceId);
     try{
       const saved=await this.loadData();
       const options=normalizeOptions(saved);
-      this.settings={layout:options.layout,fit:options.fit,height:options.height,gap:options.gap,radius:options.radius};
+      this.settings={layout:options.layout,fit:options.fit,height:options.height,gap:options.gap,radius:options.radius,centerImages:typeof saved?.centerImages==='boolean'?saved.centerImages:true};
       if(saved?.groupSettings&&typeof saved.groupSettings==='object'&&!Array.isArray(saved.groupSettings))this.groupSettings={...saved.groupSettings};
+      if(saved?.imageSettings&&typeof saved.imageSettings==='object'&&!Array.isArray(saved.imageSettings))this.imageSettings={...saved.imageSettings};
     }catch(error){console.error('Image Layouts Enhanced: configuration read',error);new Notice('画廊配置读取遇到问题，当前使用默认显示参数');}
     this.addSettingTab(new GallerySettings(this.app,this));
     this.registerEditorExtension(StateField.define<{groups:GalleryGroup[];decorations:DecorationSet}>({
@@ -119,20 +134,26 @@ export default class ImageLayoutsEnhanced extends Plugin {
     }));
     this.registerEvent(this.app.vault.on('rename',(file,oldPath)=>{
       const before=this.groupSettings;const next=renameGroupSettings(before,oldPath,file.path);
-      if(JSON.stringify(before)===JSON.stringify(next))return;
       this.groupSettings=next;
-      void this.persistSettings().then(()=>this.refreshConfiguration(file.path)).catch(()=>{if(this.groupSettings===next)this.groupSettings=before;});
+      void this.updateImageSettings(current=>renameImageSettings(current,oldPath,file.path),JSON.stringify(before)!==JSON.stringify(next)).then(()=>{this.refreshConfiguration(file.path);this.refreshImagePresentation();}).catch(()=>{if(this.groupSettings===next)this.groupSettings=before;});
     }));
   }
-  onunload(){for(const [doc,controls] of this.imageControls){closePopover(doc);controls.destroy();}this.imageControls.clear();this.imageSources.clear();for(const child of [...this.readingChildren])child.unload();this.readingChildren.clear();this.parsedSources.clear();this.selectedImages.clear();}
+  onunload(){this.disposed=true;for(const [doc,controls] of this.imageControls){closePopover(doc);controls.destroy();}this.imageControls.clear();for(const presentation of this.imagePresentations.values())presentation.destroy();this.imagePresentations.clear();this.imageSources.clear();for(const child of [...this.readingChildren])child.unload();this.readingChildren.clear();this.parsedSources.clear();this.selectedImages.clear();}
   private trackReading(child:MarkdownRenderChild,ctx:MarkdownPostProcessorContext){
     this.readingChildren.add(child);child.register(()=>this.readingChildren.delete(child));ctx.addChild(child);
   }
   private installImageControls(){
     const documents=new Set<Document>([document,...this.app.workspace.getLeavesOfType('markdown').map(leaf=>leaf.view.containerEl.ownerDocument)]);
     for(const [doc,controls]of this.imageControls)if(!documents.has(doc)){closePopover(doc);controls.destroy();this.imageControls.delete(doc);}
+    for(const [doc,presentation]of this.imagePresentations)if(!documents.has(doc)){presentation.destroy();this.imagePresentations.delete(doc);}
     for(const doc of documents)if(!this.imageControls.has(doc))this.imageControls.set(doc,new ImageControls(doc,image=>this.imageContext(image)));
+    for(const doc of documents)if(!this.imagePresentations.has(doc))this.imagePresentations.set(doc,new ImagePresentation(doc,image=>{
+      const context=this.imageContext(image);if(!context||context.grouped)return;
+      return{centered:this.settings.centerImages&&context.standalone===true,block:context.block===true,width:context.width,previewing:this.imageControls.get(doc)?.isResizing(image)};
+    }));
+    this.refreshImagePresentation();
   }
+  refreshImagePresentation(){for(const presentation of this.imagePresentations.values())presentation.refresh();}
   private imageUrl(src:string,doc:Document){
     try{const url=new URL(src,doc.baseURI);if(url.protocol==='app:'){url.search='';url.hash='';}return url.href;}catch{return src;}
   }
@@ -157,15 +178,29 @@ export default class ImageLayoutsEnhanced extends Plugin {
     if(el.dataset.ilgSectionPath!==ctx.sourcePath)el.dataset.ilgSectionPath=ctx.sourcePath;
     if(el.dataset.ilgSectionFrom!==String(from))el.dataset.ilgSectionFrom=String(from);
     if(el.dataset.ilgSectionTo!==String(to))el.dataset.ilgSectionTo=String(to);
+    this.sectionSnapshots.set(el,{path:ctx.sourcePath,source:info.text});
     const used=new Set<number>();
     for(const image of images){
-      const ref=refs.find(ref=>!used.has(ref.offset)&&this.imageUrl(this.sourceForTarget(ref.target,ctx.sourcePath),image.ownerDocument)===this.imageUrl(image.currentSrc||image.src,image.ownerDocument));
-      if(ref){used.add(ref.offset);image.dataset.ilgSourcePath=ctx.sourcePath;image.dataset.ilgSourceOffset=String(ref.offset);}
+      const authored=this.imageUrl(image.src,image.ownerDocument);
+      const candidates=refs.filter(ref=>this.imageUrl(this.sourceForTarget(ref.target,ctx.sourcePath),image.ownerDocument)===authored);
+      const duplicates=images.filter(item=>this.imageUrl(item.src,item.ownerDocument)===authored);
+      let ref=candidates.length===1?candidates[0]:candidates.length===duplicates.length?candidates[duplicates.indexOf(image)]:undefined;
+      if(!ref&&!candidates.length){
+        const rendered=this.imageUrl(image.currentSrc||image.src,image.ownerDocument);
+        const fallback=refs.filter(ref=>this.imageUrl(this.sourceForTarget(ref.target,ctx.sourcePath),image.ownerDocument)===rendered);
+        if(fallback.length===1)ref=fallback[0];
+      }
+      if(ref&&used.has(ref.offset))ref=undefined;
+      if(ref){used.add(ref.offset);image.dataset.ilgSourcePath=ctx.sourcePath;image.dataset.ilgSourceOffset=String(ref.offset);this.imageSnapshots.set(image,{path:ctx.sourcePath,source:info.text,offset:ref.offset});}
     }
+    this.refreshImagePresentation();
   }
   private imageContext(image:HTMLImageElement):ImageControlContext|undefined{
+    if(this.disposed||image.classList.contains('cm-widgetBuffer')||image.closest('.nis-stage,.nis-viewer,.ilg-viewer,.ilg-popover,.note-cover,.markdown-embed,.internal-embed:not(.image-embed):not(.media-embed)'))return;
     const view=this.app.workspace.getLeavesOfType('markdown').map(leaf=>leaf.view).find(view=>view instanceof MarkdownView&&view.containerEl.contains(image)) as MarkdownView|undefined;
     const path=view?.file?.path;if(!view||!path)return;
+    const section=image.closest<HTMLElement>('[data-ilg-section-path]');
+    if((image.dataset.ilgSourcePath&&image.dataset.ilgSourcePath!==path)||(section?.dataset.ilgSectionPath&&section.dataset.ilgSectionPath!==path))return;
     const host=image.closest<HTMLElement>('.ilg-host'),mounted=host?this.hostGroups.get(host):undefined;
     if(mounted&&mounted.path!==path)return;
     const source=view.getMode()==='source'?view.editor.getValue():(view as unknown as {data?:string}).data??this.imageSources.get(path)??this.parsedSources.get(path)?.source??mounted?.source;
@@ -173,14 +208,18 @@ export default class ImageLayoutsEnhanced extends Plugin {
     const parsed=this.parsed(source,path);
     let group=mounted?.group;
     if(!group){
-      const matching=parsed.refs.filter(ref=>this.imageUrl(this.sourceForTarget(ref.target,path),image.ownerDocument)===this.imageUrl(image.currentSrc||image.src,image.ownerDocument));
-      let ref=image.dataset.ilgSourcePath===path?matching.find(ref=>ref.offset===Number(image.dataset.ilgSourceOffset)):undefined;
-      const section=image.closest<HTMLElement>('[data-ilg-section-path]');
-      if(!ref&&section?.dataset.ilgSectionPath===path){
+      const authored=this.imageUrl(image.src,image.ownerDocument);
+      const authoredMatches=parsed.refs.filter(ref=>this.imageUrl(this.sourceForTarget(ref.target,path),image.ownerDocument)===authored);
+      const fallback=authoredMatches.length?[]:parsed.refs.filter(ref=>this.imageUrl(this.sourceForTarget(ref.target,path),image.ownerDocument)===this.imageUrl(image.currentSrc||image.src,image.ownerDocument));
+      const matching=authoredMatches.length?authoredMatches:fallback.length===1?fallback:[];
+      const snapshot=this.imageSnapshots.get(image),sectionSnapshot=section?this.sectionSnapshots.get(section):undefined;
+      if(view.getMode()!=='source'&&((snapshot&&snapshot.source!==source)||(sectionSnapshot&&sectionSnapshot.source!==source)))return;
+      let ref=snapshot?.path===path&&snapshot.source===source?matching.find(ref=>ref.offset===snapshot.offset):undefined;
+      if(!ref&&section?.dataset.ilgSectionPath===path&&sectionSnapshot?.source===source){
         const candidates=matching.filter(ref=>ref.offset>=Number(section.dataset.ilgSectionFrom)&&ref.offset<Number(section.dataset.ilgSectionTo));
         if(candidates.length===1)ref=candidates[0];
         else if(candidates.length>1){
-          const duplicates=Array.from(section.querySelectorAll<HTMLImageElement>('img')).filter(item=>!item.closest('.ilg-host')&&this.imageUrl(item.currentSrc||item.src,item.ownerDocument)===this.imageUrl(image.currentSrc||image.src,image.ownerDocument));
+          const duplicates=Array.from(section.querySelectorAll<HTMLImageElement>('img')).filter(item=>!item.closest('.ilg-host')&&this.imageUrl(item.src,item.ownerDocument)===authored);
           if(duplicates.length===candidates.length)ref=candidates[duplicates.indexOf(image)];
         }
       }
@@ -188,12 +227,23 @@ export default class ImageLayoutsEnhanced extends Plugin {
         try{
           const cm=(view.editor as unknown as {cm:EditorView}).cm;
           const pos=cm.posAtDOM(image);const from=source.lastIndexOf('\n',Math.max(0,pos-1))+1;const end=source.indexOf('\n',pos);const to=end<0?source.length:end;
-          ref=matching.find(ref=>ref.offset<=pos&&ref.offset+ref.raw.length>=pos)??matching.find(ref=>ref.offset>=from&&ref.offset<=to);
+          const exact=matching.filter(ref=>ref.offset<=pos&&ref.offset+ref.raw.length>pos),line=matching.filter(ref=>ref.offset>=from&&ref.offset<=to);
+          ref=exact.length===1?exact[0]:line.length===1?line[0]:undefined;
         }catch{}
       }
       if(!ref&&matching.length===1)ref=matching[0];if(!ref)return;
       group=parsed.groups.find(group=>ref!.offset>=group.bodyFrom&&ref!.offset<group.bodyTo);
-      if(!group)return{grouped:false,layout:()=>void this.chooseImageGroup(view,path,source,ref!.offset,image).catch(error=>{console.error('Image Layouts Enhanced',error);new Notice('图片布局打开遇到问题，请重试');})};
+      if(!group){
+        const selected=ref;
+        const save=(width:number|null)=>this.resizeImage(view,path,source,selected,width);
+        return{grouped:false,
+          block:isStandaloneImage(source,selected),
+          standalone:isStandaloneImage(source,selected)&&!/(?:^|\|)(?:left|right|inline|inl|l|r)(?:\||$)/i.test(selected.alt),
+          width:getImageWidth(this.imageSettings,this.deviceId,path,source,selected),
+          layout:()=>void this.chooseImageGroup(view,path,source,selected.offset,image).catch(error=>{console.error('Image Layouts Enhanced',error);new Notice('图片布局打开遇到问题，请重试');}),
+          resize:{save:width=>save(width)},restore:()=>void save(null).catch(()=>{}),
+        };
+      }
     }
     const selected=group;
     const guarded=(action:()=>void)=>void this.sameSource(view,path,source).then(valid=>{if(valid)action();});
@@ -201,6 +251,33 @@ export default class ImageLayoutsEnhanced extends Plugin {
       layout:()=>guarded(()=>new LayoutPicker(this.app,this.images({...selected,options:getEffectiveOptions(selected,path,this.groupSettings)},path,source).length,patch=>void this.sameSource(view,path,source).then(valid=>valid?this.editFile(path,selected,patch):undefined).catch(()=>{}),image,getEffectiveOptions(selected,path,this.groupSettings)).open()),
       configure:()=>guarded(()=>new GalleryConfiguration(image,getEffectiveOptions(selected,path,this.groupSettings),patch=>this.editFile(path,selected,patch)).open()),
     };
+  }
+  private async resizeImage(view:MarkdownView,path:string,source:string,ref:ImageReference,width:number|null):Promise<void>{
+    try{
+      const file=view.file,mode=view.getMode(),editor=mode==='source'?view.editor:undefined;
+      const device=this.deviceId;
+      const valid=()=>!this.disposed&&!!file&&file.path===path&&view.file===file&&view.getMode()===mode&&
+        this.app.workspace.getLeavesOfType('markdown').some(leaf=>leaf.view===view);
+      await this.updateImageSettings(async settings=>{
+        if(!valid())throw new Error('图片所属页面已切换，请在当前图片上重新调整尺寸');
+        const current=editor?editor.getValue():await this.app.vault.cachedRead(file!);
+        if(!valid()||current!==source||(editor&&editor.getValue()!==source))throw new Error('笔记内容已更新，请在当前图片上重新调整尺寸');
+        return setImageWidth(settings,device,path,source,ref,width);
+      });
+    }catch(error){
+      this.refreshImagePresentation();
+      new Notice(error instanceof Error?error.message:'图片尺寸保存遇到问题，请重新调整');
+      throw error;
+    }
+  }
+  private updateImageSettings(change:(settings:ImageSettings)=>ImageSettings|Promise<ImageSettings>,force=false):Promise<void>{
+    const update=this.imageUpdateQueue.catch(()=>{}).then(async()=>{
+      const next=await change(this.imageSettings);
+      if(JSON.stringify(next)===JSON.stringify(this.imageSettings)&&!force)return;
+      await this.persistSettings(next);
+      this.refreshImagePresentation();
+    });
+    this.imageUpdateQueue=update;return update;
   }
   private async sameSource(view:MarkdownView,path:string,source:string){
     const attached=this.app.workspace.getLeavesOfType('markdown').some(leaf=>leaf.view===view);
@@ -244,9 +321,19 @@ export default class ImageLayoutsEnhanced extends Plugin {
       this.refreshConfiguration(path);
     })().catch(error=>{console.error('Image Layouts Enhanced',error);new Notice('图片布局保存遇到问题，请重试');}),anchorEl,this.settings).open(),anchorEl).open();
   }
-  async persistSettings():Promise<void>{
+  async persistSettings(imageOverride?:ImageSettings):Promise<void>{
     const snapshot={...this.settings,groupSettings:JSON.parse(JSON.stringify(this.groupSettings)) as GroupSettings};
-    const write=this.storageQueue.catch(()=>{}).then(()=>this.saveData(snapshot));this.storageQueue=write;
+    const device=this.deviceId;
+    const own=(key:string)=>{try{const value:unknown=JSON.parse(key);return Array.isArray(value)&&value.length===3&&value[1]===device;}catch{return false;}};
+    const write=this.storageQueue.catch(()=>{}).then(async()=>{
+      const images=imageOverride??this.imageSettings,latest=await this.loadData();
+      const previous=latest?.imageSettings&&typeof latest.imageSettings==='object'&&!Array.isArray(latest.imageSettings)?latest.imageSettings:images;
+      const merged:ImageSettings={};
+      for(const [key,value]of Object.entries(previous))if(!own(key))merged[key]=value as ImageSettings[string];
+      for(const [key,value]of Object.entries(images))if(own(key))merged[key]=value;
+      await this.saveData({...snapshot,imageSettings:merged});
+      this.imageSettings=merged;
+    });this.storageQueue=write;
     try{await write;}catch(error){console.error('Image Layouts Enhanced: configuration write',error);new Notice('画廊配置保存遇到问题，请稍后重试');throw error;}
   }
   private async storeConfigurations(changes:GroupSettings){
@@ -484,7 +571,9 @@ export default class ImageLayoutsEnhanced extends Plugin {
 class GallerySettings extends PluginSettingTab {
   constructor(app:App,private plugin:ImageLayoutsEnhanced){super(app,plugin);}
   display(){
-    this.containerEl.empty();this.containerEl.createEl('h2',{text:'图片画廊'});
+    this.containerEl.empty();this.containerEl.createEl('h2',{text:'正文图片'});
+    new Setting(this.containerEl).setName('正文独立图片居中').setDesc('普通独立图片居中显示；悬停或长按后可拖动右下角手柄，尺寸保存在本设备，恢复尺寸可沿用笔记原有显示。').addToggle(toggle=>toggle.setValue(this.plugin.settings.centerImages).onChange(async value=>{this.plugin.settings.centerImages=value;this.plugin.refreshImagePresentation();await this.plugin.persistSettings().catch(()=>{});}));
+    this.containerEl.createEl('h2',{text:'图片画廊'});
     this.containerEl.createEl('p',{text:'选中图片引用，执行“将选中图片组成画廊”。每个图片组保存自己的布局，放大查看优先联动 Image Toolkit。'});
     new Setting(this.containerEl).setName('新图片组默认布局').addDropdown(dropdown=>{for(const [id,label]of Object.entries(LAYOUT_LABELS))dropdown.addOption(id,label);dropdown.setValue(this.plugin.settings.layout).onChange(async value=>{this.plugin.settings.layout=value as Layout;await this.plugin.persistSettings().catch(()=>{});});});
     new Setting(this.containerEl).setName('图片显示方式').setDesc('完整显示适合科研图；填满区域适合照片拼图。').addDropdown(dropdown=>dropdown.addOptions({contain:'完整等比显示',cover:'填满区域',natural:'原始比例'}).setValue(this.plugin.settings.fit).onChange(async value=>{this.plugin.settings.fit=value as GalleryOptions['fit'];await this.plugin.persistSettings().catch(()=>{});}));
