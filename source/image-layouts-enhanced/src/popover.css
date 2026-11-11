@@ -1,0 +1,44 @@
+.ilg-popover {
+  position: fixed;
+  z-index: var(--layer-popover, 100);
+  width: min(360px, calc(100vw - 16px));
+  box-sizing: border-box;
+  overflow-y: auto;
+  padding: 12px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 16px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  box-shadow: 0 12px 36px rgb(0 0 0 / 20%), inset 0 1px 0 rgb(255 255 255 / 16%);
+  font-size: var(--font-ui-small);
+  font-family: var(--font-interface);
+  overscroll-behavior: contain;
+  opacity: 1;
+  transform: none;
+  --ilg-popover-shift: -4px;
+}
+.ilg-popover[data-ilg-placement="above"] { --ilg-popover-shift: 4px; }
+.ilg-popover[data-ilg-placement="center"] { --ilg-popover-shift: 2px; }
+.ilg-popover[data-ilg-phase="initial"] { opacity: 0; transform: translateY(var(--ilg-popover-shift)) scale(.985); }
+.ilg-popover[data-ilg-phase="open"] { transition: opacity 160ms ease, transform 160ms cubic-bezier(.2, .75, .25, 1); }
+.ilg-popover[data-ilg-phase="exiting"] { opacity: 0; transform: translateY(var(--ilg-popover-shift)) scale(.985); transition: opacity 100ms ease-in, transform 100ms ease-in; pointer-events: none; }
+.ilg-popover[aria-hidden="true"] { pointer-events: none; }
+.ilg-popover[hidden] { display: none !important; }
+.ilg-popover-content { min-width: 0; }
+.ilg-popover button { font-size: var(--font-ui-small); }
+.ilg-popover :focus-visible { outline: 2px solid var(--interactive-accent); outline-offset: 2px; }
+.ilg-popover .ilg-popover-content > h3 { margin: 0 0 10px; font-size: var(--font-ui-medium); }
+
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .ilg-popover {
+    border-color: color-mix(in srgb, var(--text-normal) 15%, transparent);
+    background: color-mix(in srgb, var(--background-primary) 72%, transparent);
+    -webkit-backdrop-filter: blur(22px) saturate(160%);
+    backdrop-filter: blur(22px) saturate(160%);
+    box-shadow: 0 12px 36px rgb(0 0 0 / 20%), inset 0 1px 0 rgb(255 255 255 / 16%), inset 0 0 0 1px rgb(255 255 255 / 3%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ilg-popover { transition: none !important; }
+  .ilg-popover[data-ilg-phase="initial"], .ilg-popover[data-ilg-phase="exiting"] { transform: none; }
+}

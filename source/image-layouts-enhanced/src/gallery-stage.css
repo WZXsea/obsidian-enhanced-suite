@@ -1,0 +1,54 @@
+/* Unequal collage presets keep their original proportions while switching inline. */
+.ilg-dominant-grid, .ilg-complete-grid {
+  position: relative;
+  height: max(var(--ilg-height), calc(var(--ilg-stage-rows) * 64px + (var(--ilg-stage-rows) - 1) * var(--ilg-gap)));
+}
+.ilg-stage-main { min-height: 0; overflow: hidden; border-radius: var(--ilg-radius); }
+.ilg-stage-main-content, .ilg-stage-main-content > .ilg-cell-figure { height: 100%; }
+.ilg-stage-main-content > .ilg-cell-figure { width: 100%; }
+.ilg-stage-thumbnails {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--ilg-gap);
+  align-content: start;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: visible;
+}
+.ilg-gallery .ilg-stage-thumb-figure .ilg-thumb {
+  flex: 1 1 0;
+  width: 100%;
+  height: auto;
+  border: 0;
+  border-radius: 0;
+  opacity: 1;
+}
+.ilg-gallery .ilg-stage-thumb-figure .ilg-thumb:hover { background: var(--background-modifier-hover, #e8eaf0); }
+.ilg-stage-thumb-figure .ilg-image-caption { pointer-events: none; }
+.ilg-dominant-grid .ilg-nav { top: 50%; transform: translateY(-50%); }
+.ilg-gallery .ilg-stage-zoom {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 29px;
+  height: 29px;
+  padding: 6px;
+  border: 1px solid rgba(255, 255, 255, .3);
+  border-radius: 7px;
+  color: white;
+  background: rgba(35, 39, 48, .55);
+  box-shadow: none;
+  backdrop-filter: blur(6px);
+  opacity: 0;
+  transition: opacity .15s ease;
+}
+.ilg-stage-zoom svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.ilg-figure:hover .ilg-stage-zoom, .ilg-figure:focus-within .ilg-stage-zoom { opacity: 1; }
+.ilg-gallery .ilg-stage-zoom:hover { background: rgba(35, 39, 48, .78); }
+.ilg-gallery .ilg-stage-zoom:focus-visible { outline: 2px solid var(--ilg-accent); outline-offset: 2px; }
+@media (hover: none) { .ilg-gallery .ilg-stage-zoom { opacity: 1; } }

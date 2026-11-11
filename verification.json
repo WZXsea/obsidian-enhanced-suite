@@ -1,0 +1,61 @@
+{
+  "date": "2026-11-11",
+  "automatedTestsPassed": 466,
+  "builds": "6 passed",
+  "mobileBundleLoad": "passed",
+  "searchBrowserRegression": "6 suites passed; 20 viewport/theme/font cases and 10 fold geometry cases",
+  "citationMobileEditorBrowser": "4 flows passed",
+  "imageViewerMobileEmulation": [
+    {
+      "version": "1.4.18",
+      "viewport": {
+        "width": 412,
+        "height": 915
+      },
+      "modal": {
+        "x": 0,
+        "y": 12,
+        "width": 412,
+        "height": 891,
+        "top": 12,
+        "right": 412,
+        "bottom": 903,
+        "left": 0
+      },
+      "minimumButtonHeight": 44,
+      "pinchScale": 1.8,
+      "rotated": true,
+      "reset": true,
+      "closed": true
+    },
+    {
+      "version": "1.4.18",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "modal": {
+        "x": 0,
+        "y": 12,
+        "width": 1024,
+        "height": 744,
+        "top": 12,
+        "right": 1024,
+        "bottom": 756,
+        "left": 0
+      },
+      "minimumButtonHeight": 44,
+      "pinchScale": 1.8,
+      "rotated": true,
+      "reset": true,
+      "closed": true
+    }
+  ],
+  "desktopRestored": true,
+  "deviceAcceptance": [
+    "Android WebView",
+    "system back",
+    "real IME",
+    "background restore"
+  ]
+}

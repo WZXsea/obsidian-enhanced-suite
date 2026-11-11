@@ -1,0 +1,16 @@
+{
+  "name": "image-toolkit-stage-upgrade",
+  "version": "1.4.18",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc --noEmit && node esbuild.config.mjs",
+    "test": "node test.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "esbuild": "^0.25.0",
+    "obsidian": "latest",
+    "typescript": "^5.8.0"
+  }
+}

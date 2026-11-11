@@ -1,0 +1,25 @@
+{
+  "name": "obsidian-table-resizer",
+  "version": "0.2.0",
+  "description": "Resize Markdown table columns in Obsidian.",
+  "main": "main.js",
+  "type": "module",
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "tsc --noEmit --skipLibCheck && node esbuild.config.mjs production"
+  },
+  "keywords": [
+    "obsidian",
+    "table",
+    "resize"
+  ],
+  "author": "weizixun",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "esbuild": "^0.25.0",
+    "obsidian": "latest",
+    "tslib": "^2.8.1",
+    "typescript": "^5.8.0"
+  }
+}

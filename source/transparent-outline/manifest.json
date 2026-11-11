@@ -1,0 +1,9 @@
+{
+  "id": "transparent-outline",
+  "name": "Transparent Outline",
+  "version": "0.3.3",
+  "minAppVersion": "1.5.0",
+  "description": "Transparent per-pane heading navigation with hover, pinned, and off modes.",
+  "author": "weizixun",
+  "isDesktopOnly": false
+}

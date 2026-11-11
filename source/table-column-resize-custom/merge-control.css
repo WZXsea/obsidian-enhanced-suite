@@ -1,0 +1,21 @@
+.tcr-merge-menu { width: min(280px, calc(100vw - 16px)); }
+.tcr-merge-menu .tcr-font-heading { margin-bottom: 8px; }
+.tcr-merge-help, .tcr-merge-status { margin: 0 0 12px; color: var(--text-muted); font-size: 12px; }
+.tcr-merge-status { min-height: 36px; }
+.tcr-merge-menu .tcr-font-reset { margin-top: 6px; }
+.tcr-merge-menu .tcr-merge-apply { color: var(--interactive-accent); }
+.tcr-merge-menu button:disabled { opacity: 0.4; cursor: default; }
+.tcr-merge-picking td, .tcr-merge-picking th { cursor: crosshair; }
+.tcr-merge-selected { outline: 2px solid var(--interactive-accent); outline-offset: -2px; background: var(--background-modifier-hover) !important; }
+.tcr-merge-editing { outline: 1px dashed var(--interactive-accent); outline-offset: 2px; }
+
+table[data-tcr] .tcr-merge-covered { display: none !important; }
+table.tcr-has-merges td[rowspan], table.tcr-has-merges th[rowspan] { vertical-align: middle !important; }
+
+.tcr-merge-menu.is-picking .tcr-merge-help, .tcr-merge-menu.is-picking .tcr-merge-edit, .tcr-merge-menu.is-picking .tcr-merge-clear { display: none; }
+
+/* Native editor wrappers fill the cell height; release it for rowspan centering. */
+table[data-tcr].tcr-has-merges [rowspan]:not([rowspan="1"]) > .table-cell-wrapper {
+  height: auto !important;
+  min-height: 0 !important;
+}

@@ -1,0 +1,9 @@
+{
+  "name": "transparent-outline",
+  "version": "0.3.3",
+  "type": "module",
+  "scripts": {
+    "build": "../node_modules/.bin/tsc --noEmit -p tsconfig.json && node build.mjs",
+    "test": "node --test tests/mobile-actions.mjs"
+  }
+}

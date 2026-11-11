@@ -1,0 +1,89 @@
+{
+  "date": "2026-11-11",
+  "plugins": [
+    {
+      "id": "float-search",
+      "name": "浮动搜索",
+      "version": "4.4.4",
+      "sourceDirectory": "source/float-search",
+      "minAppVersion": "1.2.0",
+      "isDesktopOnly": false,
+      "testsPassed": 205,
+      "files": {
+        "main.js": "f73d7fb1a374bbba6730f56a7dac0690bd5869a8c0052590c914b52a83fccdf9",
+        "manifest.json": "1b21623bb16e7af2d2c8812d45c51612d272f9bbac58446d3eba1034b3dfb7f4",
+        "styles.css": "167ff880bb133fe375b94a620cec10b6c724af4a91b0be137658555f06c37987"
+      }
+    },
+    {
+      "id": "obsidian-image-toolkit",
+      "name": "图片查看与导航",
+      "version": "1.4.18",
+      "sourceDirectory": "source/image-toolkit-upgraded",
+      "minAppVersion": "1.8.7",
+      "isDesktopOnly": false,
+      "testsPassed": 47,
+      "files": {
+        "main.js": "2366add8b6b01ca21f700dfd3b1014e005f873f29f19fd3fd9d69e6fca3151b2",
+        "manifest.json": "6a8ecb15c3d2de67cfdfc877baeac0741c6b90a8ddea74f90c59296fd88da100",
+        "styles.css": "9b9492ba03734098168a53bb9b098072035c363bf7dedf639283e4e3ecabcf61"
+      }
+    },
+    {
+      "id": "image-layouts-enhanced",
+      "name": "图片布局",
+      "version": "0.1.7",
+      "sourceDirectory": "source/image-layouts-enhanced",
+      "minAppVersion": "1.7.2",
+      "isDesktopOnly": false,
+      "testsPassed": 137,
+      "files": {
+        "main.js": "f1aef8bd64d2fd13368e04fde1f7530bcbf5eecb08e9e0d8a144048e9262c82b",
+        "manifest.json": "52e98f58f3c0fff4a7e0eff782f4e2d5cc6dd93d0b6cb6bb83db7fd5e5d28bf1",
+        "styles.css": "239a9b8f5b1d5427104a4b883c10f3f815dc6ce1e069c9f5b9839e3e8d1a9dba"
+      }
+    },
+    {
+      "id": "table-column-resize",
+      "name": "表格调整",
+      "version": "1.0.4",
+      "sourceDirectory": "source/table-column-resize-custom",
+      "minAppVersion": "1.4.0",
+      "isDesktopOnly": false,
+      "testsPassed": 18,
+      "files": {
+        "main.js": "eb7e477afb2bde9e8d1c29dc07d87a5bdd140cd257eea82b2e8b9c318e424c82",
+        "manifest.json": "76f2035bd855f96d9e4f3b3c62176442bef3db75530ec9a184e328247911412e",
+        "styles.css": "9c77bcfc6d8045e24b28067f835f0ab1252a381012ab36e62db8d92357f32df0"
+      }
+    },
+    {
+      "id": "citation-badges",
+      "name": "引用徽标",
+      "version": "0.3.5",
+      "sourceDirectory": "source/citation-badges",
+      "minAppVersion": "1.8.0",
+      "isDesktopOnly": false,
+      "testsPassed": 53,
+      "files": {
+        "main.js": "c890fd687552c4e38f5fd9c3dc1b0e838aff959878d7c3db0a75ff7c32cf8810",
+        "manifest.json": "6dfc80252ec674bd737334594f4cec8a4b132ca183e7866269255118b3abff87",
+        "styles.css": "f5b5135b1248d0882017b298c055ab2f3380e18e68d41c5021b27a66df81fb3a"
+      }
+    },
+    {
+      "id": "transparent-outline",
+      "name": "透明大纲",
+      "version": "0.3.3",
+      "sourceDirectory": "source/transparent-outline",
+      "minAppVersion": "1.5.0",
+      "isDesktopOnly": false,
+      "testsPassed": 6,
+      "files": {
+        "main.js": "d11875053e2407b26a33e7a84750d451015206aa1c4ee971e4059d32cf032bf8",
+        "manifest.json": "fd9e1c12cdbdd288c59bad3b1c1355ec7612259e510eb1bd3d8c60095c93d5b8",
+        "styles.css": "d7b53dc9b101463cf35eb507cd01ae8da6d40e2346c3c494fc8449a7451f3fce"
+      }
+    }
+  ]
+}

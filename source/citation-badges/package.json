@@ -1,0 +1,11 @@
+{
+  "name": "obsidian-citation-badges",
+  "version": "0.3.5",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "../node_modules/.bin/tsc --noEmit && node esbuild.config.mjs",
+    "test": "node tests/run.mjs && node tests/definition-edit.mjs && node tests/mobile.mjs && node tests/callout.mjs",
+    "test:mobile-browser": "node tests/mobile-editor-browser.mjs"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "id": "citation-badges",
+  "name": "Citation Badges · 引用徽标",
+  "version": "0.3.5",
+  "minAppVersion": "1.8.0",
+  "description": "将标准脚注与相邻引用簇显示为主题适配的淡底上标徽标，支持实时预览和阅读模式。",
+  "author": "weizixun",
+  "isDesktopOnly": false
+}

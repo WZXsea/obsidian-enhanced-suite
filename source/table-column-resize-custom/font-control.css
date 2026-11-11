@@ -1,0 +1,351 @@
+.tcr-font-toolbar {
+  position: sticky;
+  inset-inline-start: 0;
+  width: 100%;
+  height: 24px;
+  margin-top: -8px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding-inline: 4px;
+  box-sizing: border-box;
+}
+
+/* Reserve space above Live Preview's native column-resize handles. */
+.markdown-source-view .tcr-font-toolbar {
+  height: 40px;
+  margin-top: -14px;
+  padding-inline-end: 20px;
+  padding-bottom: 16px;
+}
+
+button.tcr-font-button {
+  height: 20px;
+  min-width: 30px;
+  padding: 0 7px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-muted);
+  font-family: var(--font-interface);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  opacity: 0.55;
+  transition: opacity 120ms ease, background 120ms ease;
+}
+
+.table-wrapper:hover .tcr-font-button,
+.markdown-preview-section:hover > .tcr-font-toolbar .tcr-font-button,
+.tcr-font-toolbar:focus-within .tcr-font-button {
+  opacity: 1;
+}
+
+button.tcr-font-button:hover,
+button.tcr-font-button[aria-expanded="true"] {
+  color: var(--text-normal);
+  background: var(--background-modifier-hover);
+  border-color: var(--background-modifier-border);
+  opacity: 1;
+}
+
+.tcr-font-menu {
+  position: fixed;
+  z-index: var(--layer-popover, 1000);
+  width: min(244px, calc(100vw - 16px));
+  padding: 14px;
+  box-sizing: border-box;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 12px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  box-shadow: var(--shadow-s, 0 6px 24px rgba(0, 0, 0, 0.2));
+  font-family: var(--font-interface);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.tcr-font-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 14px;
+  font-weight: 500;
+}
+
+.tcr-font-value {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.tcr-font-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+  color: var(--text-muted);
+}
+
+.tcr-font-slider-row > span:first-child { font-size: 12px; }
+.tcr-font-slider-row > span:last-child { font-size: 20px; }
+.tcr-font-slider-row input[type="range"] {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  margin: 0;
+  accent-color: var(--interactive-accent);
+  cursor: pointer;
+}
+
+button.tcr-font-reset {
+  display: block;
+  width: 100%;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  background: var(--background-secondary);
+  color: var(--text-muted);
+  box-shadow: none;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+button.tcr-font-reset:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.tcr-font-button:focus-visible,
+.tcr-font-menu :is(button, input):focus-visible {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: 2px;
+}
+
+.tcr-font-custom,
+.tcr-font-custom :is(th, td) {
+  font-size: var(--tcr-font-size) !important;
+}
+
+.tcr-font-custom :is(th, td) :is(p, span, a, strong, em, code, li, .table-cell-wrapper) {
+  font-size: inherit !important;
+}
+
+@media (pointer: coarse) {
+  .tcr-font-toolbar { height: 38px; }
+  button.tcr-font-button { min-width: 38px; height: 32px; opacity: 1; }
+  button.tcr-font-reset { height: 36px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button.tcr-font-button { transition: none; }
+}
+
+@media print {
+  .tcr-font-toolbar, .tcr-font-menu, .tcr-handle { display: none; }
+}
+
+/* Glass surface and tactile slider, scoped to the font popover. */
+.tcr-font-menu {
+  border-radius: 16px;
+  border-color: color-mix(in srgb, var(--text-normal) 15%, transparent);
+  background: color-mix(in srgb, var(--background-primary) 72%, transparent);
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
+  backdrop-filter: blur(22px) saturate(160%);
+  box-shadow: 0 12px 36px rgb(0 0 0 / 20%),
+    inset 0 1px 0 rgb(255 255 255 / 16%),
+    inset 0 0 0 1px rgb(255 255 255 / 3%);
+}
+
+.tcr-font-menu.is-dragging {
+  box-shadow: 0 12px 36px rgb(0 0 0 / 20%),
+    inset 0 1px 0 rgb(255 255 255 / 22%),
+    inset 0 0 0 1px color-mix(in srgb, var(--interactive-accent) 14%, transparent);
+}
+
+.tcr-font-menu .tcr-font-value {
+  transition: color 140ms ease, transform 140ms ease;
+  transform-origin: right center;
+}
+
+.tcr-font-menu.is-dragging .tcr-font-value {
+  color: var(--text-normal);
+  transform: scale(1.06);
+}
+
+.tcr-font-menu .tcr-font-slider-row input[type="range"] {
+  appearance: none;
+  -webkit-appearance: none;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+
+.tcr-font-menu input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(to right,
+    color-mix(in srgb, var(--interactive-accent) 85%, white) 0%,
+    var(--interactive-accent) var(--tcr-slider-progress, 27%),
+    color-mix(in srgb, var(--text-normal) 18%, transparent) var(--tcr-slider-progress, 27%),
+    color-mix(in srgb, var(--text-normal) 18%, transparent) 100%);
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 12%), 0 1px 0 rgb(255 255 255 / 8%);
+}
+
+.tcr-font-menu input[type="range"]::-webkit-slider-thumb {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  position: relative !important;
+  top: 0 !important;
+  bottom: auto !important;
+  left: auto !important;
+  width: 14px !important;
+  height: 14px !important;
+  margin-top: -5px !important;
+  box-sizing: border-box !important;
+  transform: none !important;
+  transform-origin: center !important;
+  border: 1px solid rgb(255 255 255 / 70%);
+  border-radius: 50% !important;
+  background: linear-gradient(150deg, rgb(255 255 255 / 97%), rgb(231 237 246 / 88%)) !important;
+  opacity: 1 !important;
+  box-shadow: 0 2px 5px rgb(0 0 0 / 24%), inset 0 1px 2px white;
+  transition: transform 150ms ease, box-shadow 150ms ease;
+}
+
+.tcr-font-menu input[type="range"]:hover::-webkit-slider-thumb {
+  box-shadow: 0 2px 6px rgb(0 0 0 / 24%),
+    0 0 0 3px color-mix(in srgb, var(--interactive-accent) 12%, transparent),
+    inset 0 1px 2px white;
+}
+
+.tcr-font-menu.is-dragging input[type="range"]::-webkit-slider-thumb {
+  transform: scale(1.08) !important;
+  box-shadow: 0 3px 8px rgb(0 0 0 / 24%),
+    0 0 0 4px color-mix(in srgb, var(--interactive-accent) 16%, transparent),
+    0 0 16px color-mix(in srgb, var(--interactive-accent) 22%, transparent),
+    inset 0 1px 2px white;
+}
+
+button.tcr-font-reset {
+  background: color-mix(in srgb, var(--background-secondary) 42%, transparent);
+  border-color: color-mix(in srgb, var(--text-normal) 12%, transparent);
+  transition: background 140ms ease, transform 140ms ease;
+}
+
+button.tcr-font-reset:active { transform: scale(0.98); }
+button.tcr-font-button { transition: opacity 120ms ease, background 120ms ease, transform 140ms ease; }
+button.tcr-font-button:active { transform: scale(0.92); }
+
+@supports not (backdrop-filter: blur(1px)) {
+  .tcr-font-menu { background: var(--background-primary); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tcr-font-menu *, button.tcr-font-button { transition: none !important; }
+  .tcr-font-menu.is-dragging .tcr-font-value,
+  .tcr-font-menu.is-dragging input[type="range"]::-webkit-slider-thumb,
+  button.tcr-font-reset:active, button.tcr-font-button:active { transform: none !important; }
+}
+
+/* Compact only an empty source separator immediately before an enhanced table.
+   Keep the line in CodeMirror so Markdown separation and caret navigation remain. */
+.markdown-source-view.mod-cm6 .cm-content > .cm-line:has(> br:only-child):has(+ .cm-table-widget table[data-tcr-font]) {
+  height: 6px !important;
+  min-height: 6px !important;
+  line-height: 6px !important;
+  padding-block: 0 !important;
+}
+
+.tcr-font-toolbar { gap: 3px; }
+button.tcr-copy-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 20px;
+  width: 26px;
+  min-width: 26px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-muted);
+  opacity: 0.55;
+  cursor: pointer;
+  transition: opacity 120ms ease, background 120ms ease, transform 140ms ease;
+}
+.tcr-copy-button svg { width: 13px; height: 13px; }
+.table-wrapper:hover .tcr-copy-button,
+.markdown-preview-section:hover > .tcr-font-toolbar .tcr-copy-button,
+.tcr-font-toolbar:focus-within .tcr-copy-button { opacity: 1; }
+button.tcr-copy-button:hover {
+  color: var(--text-normal);
+  background: var(--background-modifier-hover);
+  border-color: var(--background-modifier-border);
+  opacity: 1;
+}
+button.tcr-copy-button:active { transform: scale(0.92); }
+button.tcr-copy-button.is-copied { color: var(--text-success, var(--interactive-accent)); opacity: 1; }
+button.tcr-copy-button:focus-visible { outline: 2px solid var(--interactive-accent); outline-offset: 2px; }
+.tcr-copy-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+@media (pointer: coarse) {
+  button.tcr-copy-button { height: 32px; width: 32px; min-width: 32px; opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  button.tcr-copy-button { transition: none; }
+  button.tcr-copy-button:active { transform: none; }
+}
+
+/* Android touch targets and keyboard-aware popovers. The table itself retains
+   native scrolling; only the explicit resize handles claim touch gestures. */
+.tcr-handle { touch-action: none; }
+.tcr-font-menu { overflow-y: auto; overscroll-behavior: contain; }
+@media (pointer: coarse), (hover: none) {
+  .tcr-font-toolbar,
+  .markdown-source-view .tcr-font-toolbar {
+    height: 48px;
+    min-height: 48px;
+    margin-top: 0;
+    padding-block: 2px;
+    padding-inline: 2px;
+    gap: 2px;
+  }
+  .tcr-font-toolbar.tcr-width-custom { min-width: min(100%, 214px); }
+  button.tcr-copy-button, button.tcr-font-button {
+    height: 44px;
+    width: 44px;
+    min-width: 44px;
+    padding: 0;
+    opacity: 1;
+  }
+  .tcr-copy-button svg { width: 18px; height: 18px; }
+  .tcr-width-handle { flex-basis: 28px; width: 28px; height: 44px; opacity: 0.8; }
+  .tcr-width-handle::after { top: 12px; height: 20px; inset-inline-end: 10px; }
+  .tcr-handle { width: 20px; right: -10px; }
+  .tcr-handle::after {
+    content: ''; position: absolute; top: 20%; bottom: 20%; left: 9px;
+    width: 2px; border-radius: 2px; background: var(--interactive-accent); opacity: 0.45;
+  }
+  .tcr-font-menu button.tcr-font-reset,
+  .tcr-width-alignment button { min-height: 44px; height: auto; }
+  .tcr-font-menu .tcr-font-slider-row input[type="range"] { height: 44px; touch-action: none; }
+  .tcr-font-menu input[type="range"]::-webkit-slider-thumb {
+    width: 24px !important; height: 24px !important; margin-top: -10px !important;
+  }
+}

@@ -1,0 +1,56 @@
+{
+	"name": "float-search",
+	"version": "4.4.4",
+	"description": "You can use search view in modal/leaf/popout window now.",
+	"main": "main.js",
+	"packageManager": "pnpm@10.33.2",
+	"scripts": {
+		"dev": "node esbuild.config.mjs",
+		"typecheck": "tsc --noEmit --skipLibCheck",
+		"lint": "eslint src --ext .ts",
+		"test": "vitest run",
+		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+		"version": "node version-bump.mjs && git add manifest.json versions.json",
+		"test:mobile-ux": "node tests/mobile-ux-browser.mjs",
+		"test:mobile-collapse": "node tests/mobile-collapse-browser.mjs",
+		"test:mobile-density": "node tests/mobile-density-browser.mjs",
+		"test:mobile-preview": "node tests/mobile-preview-performance-browser.mjs",
+		"test:mobile-motion": "node tests/mobile-motion-browser.mjs",
+		"test:desktop-preview": "node tests/desktop-preview-browser.mjs",
+		"test:desktop-motion": "node tests/desktop-motion-browser.mjs",
+		"test:desktop-main": "node tests/desktop-preview-main-browser.mjs",
+		"test:fold-motion": "node tests/fold-motion-browser.mjs"
+	},
+	"keywords": [],
+	"author": "Boninall",
+	"license": "GPL-3.0",
+	"devDependencies": {
+		"@types/node": "^16.18.50",
+		"@typescript-eslint/eslint-plugin": "5.29.0",
+		"@typescript-eslint/parser": "5.29.0",
+		"builtin-modules": "3.3.0",
+		"esbuild": "0.28.1",
+		"eslint": "8.57.1",
+		"obsidian": "^1.12.3",
+		"tslib": "2.4.0",
+		"typescript": "4.7.4",
+		"vitest": "4.1.9"
+	},
+	"pnpm": {
+		"overrides": {
+			"ajv@<6.14.0": "6.14.0",
+			"brace-expansion@<1.1.13": "1.1.13",
+			"braces@<3.0.3": "3.0.3",
+			"cross-spawn@<7.0.5": "7.0.6",
+			"esbuild@<0.28.1": "0.28.1",
+			"flatted@<3.4.2": "3.4.2",
+			"js-yaml@<4.2.0": "4.2.0",
+			"micromatch@<4.0.8": "4.0.8",
+			"minimatch@<3.1.4": "3.1.4",
+			"picomatch@<2.3.2": "2.3.2"
+		}
+	},
+	"dependencies": {
+		"monkey-around": "^2.3.0"
+	}
+}

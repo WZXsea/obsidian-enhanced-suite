@@ -1,0 +1,38 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "*": [
+        "node_modules/*"
+      ]
+    },
+    "typeRoots": [
+      "node_modules/@types"
+    ],
+    "inlineSourceMap": true,
+    "inlineSources": true,
+    "module": "ESNext",
+    "target": "ES2022",
+    "allowJs": false,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictPropertyInitialization": true,
+    "noImplicitReturns": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitOverride": true,
+    "useUnknownInCatchVariables": true,
+    "moduleResolution": "Bundler",
+    "importHelpers": true,
+    "downlevelIteration": true,
+    "esModuleInterop": true,
+    "lib": [
+      "DOM",
+      "ES2022"
+    ]
+  },
+  "include": [
+    "src/**/*.ts"
+  ]
+}
