@@ -16,8 +16,9 @@
 .to-outline[data-mode="pinned"] {pointer-events:auto}
 .to-outline[data-mode="pinned"] .to-outline-edge {display:none}
 .to-outline[data-mode="hover"] .to-outline-list,.to-outline[data-mode="hover"] .to-outline-tools {opacity:0;visibility:hidden;pointer-events:none;transition:opacity 240ms ease,visibility 0s linear 240ms}
-.to-outline[data-mode="hover"]:is(.is-revealed,.is-expanded,:focus-within,:hover) {pointer-events:auto}
-.to-outline[data-mode="hover"]:is(.is-revealed,.is-expanded,:focus-within,:hover) .to-outline-list,.to-outline[data-mode="hover"]:is(.is-revealed,.is-expanded,:focus-within,:hover) .to-outline-tools {opacity:1;visibility:visible;pointer-events:auto;transition:opacity 240ms ease}
+/* Desktop hover/focus applies only to desktop panels; mobile uses is-mobile-open. */
+.to-outline[data-mode="hover"]:where(:not([data-mobile="true"])):is(.is-revealed,.is-expanded,:focus-within,:hover) {pointer-events:auto}
+.to-outline[data-mode="hover"]:where(:not([data-mobile="true"])):is(.is-revealed,.is-expanded,:focus-within,:hover) .to-outline-list,.to-outline[data-mode="hover"]:where(:not([data-mobile="true"])):is(.is-revealed,.is-expanded,:focus-within,:hover) .to-outline-tools {opacity:1;visibility:visible;pointer-events:auto;transition:opacity 240ms ease}
 @media(max-width:600px) {.to-outline {right:calc(var(--to-scrollbar-gutter,15px) + 26px);max-width:48%;font-size:12px}}
 @media(prefers-reduced-motion:reduce) {.to-outline * {transition:none!important}}
 
@@ -30,7 +31,7 @@
 .to-outline[data-surface="frosted"]::before {backdrop-filter:blur(var(--to-effective-blur,var(--to-blur,16px)));-webkit-backdrop-filter:blur(var(--to-effective-blur,var(--to-blur,16px)))}
 .to-outline[data-surface="tinted"]::before {backdrop-filter:none}
 .to-outline:is([data-surface="frosted"],[data-surface="tinted"])[data-mode="pinned"]::before,
-.to-outline:is([data-surface="frosted"],[data-surface="tinted"])[data-mode="hover"]:is(.is-revealed,.is-expanded,:focus-within,:hover):not(.is-dismissed)::before {opacity:1;visibility:visible;transition:opacity 240ms ease}
+.to-outline:is([data-surface="frosted"],[data-surface="tinted"])[data-mode="hover"]:where(:not([data-mobile="true"])):is(.is-revealed,.is-expanded,:focus-within,:hover):not(.is-dismissed)::before {opacity:1;visibility:visible;transition:opacity 240ms ease}
 .to-outline:is([data-surface="frosted"],[data-surface="tinted"]) button {color:var(--text-normal)}
 .to-outline:is([data-surface="frosted"],[data-surface="tinted"]) .to-outline-link {text-shadow:none}
 .to-outline .to-outline-row.is-active .to-outline-link,.to-outline button.to-outline-link:hover {color:var(--text-accent)}
@@ -60,7 +61,7 @@
 .to-outline .to-outline-depth-labels button {display:block;padding:2px 0!important;width:14px;min-width:0;font-size:10px;color:var(--text-faint);font-variant-numeric:tabular-nums;transition:color 140ms ease}
 .to-outline .to-outline-depth-labels button[aria-pressed="true"],.to-outline .to-outline-depth-labels button:hover {color:var(--text-accent)}
 .to-outline[data-mode="hover"] .to-outline-depth {opacity:0;visibility:hidden;pointer-events:none;transition:opacity 240ms ease,visibility 0s linear 240ms}
-.to-outline[data-mode="hover"]:is(.is-revealed,.is-expanded,:focus-within,:hover) .to-outline-depth {opacity:1;visibility:visible;pointer-events:auto;transition:opacity 240ms ease}
+.to-outline[data-mode="hover"]:where(:not([data-mobile="true"])):is(.is-revealed,.is-expanded,:focus-within,:hover) .to-outline-depth {opacity:1;visibility:visible;pointer-events:auto;transition:opacity 240ms ease}
 .to-outline[data-mode="hover"].is-dismissed .to-outline-depth {opacity:0;visibility:hidden;pointer-events:none}
 /* Keep the round handle consistent with themes that enlarge native sliders. */
 .to-outline input.to-outline-depth-range::-webkit-slider-thumb {appearance:none!important;-webkit-appearance:none!important;width:14px!important;height:14px!important;margin-top:4px!important;border:0!important;border-radius:50%!important;background:var(--text-normal)!important}

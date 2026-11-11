@@ -1,57 +1,646 @@
 {
-  "date": "2026-11-11",
-  "automatedTestsPassed": 466,
-  "builds": "6 passed",
-  "mobileBundleLoad": "passed",
-  "searchBrowserRegression": "6 suites passed; 20 viewport/theme/font cases and 10 fold geometry cases",
-  "citationMobileEditorBrowser": "4 flows passed",
-  "imageViewerMobileEmulation": [
-    {
-      "version": "1.4.18",
-      "viewport": {
-        "width": 412,
-        "height": 915
-      },
-      "modal": {
-        "x": 0,
-        "y": 12,
-        "width": 412,
-        "height": 891,
-        "top": 12,
-        "right": 412,
-        "bottom": 903,
-        "left": 0
-      },
-      "minimumButtonHeight": 44,
-      "pinchScale": 1.8,
-      "rotated": true,
-      "reset": true,
-      "closed": true
+  "date": "2026-11-12",
+  "previousReleaseBaseline": {
+    "date": "2026-11-11",
+    "tag": "android-20261111",
+    "automatedTestsPassed": 466,
+    "buildsPassed": 6
+  },
+  "currentReleaseValidation": {
+    "scope": "Transparent Outline 0.3.4 mobile closed-panel hit testing and scrolling",
+    "transparentOutlineBuild": "TypeScript and build passed",
+    "transparentOutlineUnitTestsPassed": 6,
+    "browserRegression": {
+      "cssSha256": "12b3716b76b801f6feef46f9ccfe7410e6a42fb310a9611e8430fa445c6252a7",
+      "casesPassed": 32,
+      "renderer": "Independent Chromium touch fixture using the actual plugin CSS; native Obsidian gestures remain device acceptance.",
+      "cases": [
+        {
+          "name": "phone:closed-idle",
+          "passed": true,
+          "pointerEvents": "none",
+          "hover": false,
+          "focusWithin": false,
+          "open": false,
+          "hits": [
+            {
+              "x": 188,
+              "y": 338.8,
+              "target": "",
+              "article": true
+            },
+            {
+              "x": 332,
+              "y": 476.2,
+              "target": "",
+              "article": true
+            },
+            {
+              "x": 260,
+              "y": 721,
+              "target": "",
+              "article": true
+            }
+          ]
+        },
+        {
+          "name": "phone:closed-residual-revealed",
+          "passed": true,
+          "pointerEvents": "none",
+          "hover": false,
+          "focusWithin": false,
+          "open": false,
+          "hits": [
+            {
+              "x": 188,
+              "y": 338.8,
+              "target": "",
+              "article": true
+            },
+            {
+              "x": 332,
+              "y": 476.2,
+              "target": "",
+              "article": true
+            },
+            {
+              "x": 260,
+              "y": 721,
+              "target": "",
+              "article": true
+            }
+          ]
+        },
+        {
+          "name": "phone:closed-residual-expanded",
+          "passed": true,
+          "pointerEvents": "none",
+          "hover": false,
+          "focusWithin": false,
+          "open": false,
+          "hits": [
+            {
+              "x": 188,
+              "y": 338.8,
+              "target": "",
+              "article": true
+            },
+            {
+              "x": 332,
+              "y": 476.2,
+              "target": "",
+              "article": true
+            },
+            {
+              "x": 260,
+              "y": 721,
+              "target": "",
+              "article": true
+            }
+          ]
+        },
+        {
+          "name": "phone:closed-parent-focus-within",
+          "passed": true,
+          "pointerEvents": "none",
+          "hover": false,
+          "focusWithin": true,
+          "open": false,
+          "hits": [
+            {
+              "x": 188,
+              "y": 338.8,
+              "target": "",
+              "article": true
+            },
+            {
+              "x": 332,
+              "y": 476.2,
+              "target": "",
+              "article": true
+            },
+            {
+              "x": 260,
+              "y": 721,
+              "target": "",
+              "article": true
+            }
+          ]
+        },
+        {
+          "name": "phone:closed-sticky-hover",
+          "passed": true,
+          "pointerEvents": "none",
+          "hover": false,
+          "focusWithin": false,
+          "open": false,
+          "hits": [
+            {
+              "x": 188,
+              "y": 338.8,
+              "target": "",
+              "article": true
+            },
+            {
+              "x": 332,
+              "y": 476.2,
+              "target": "",
+              "article": true
+            },
+            {
+              "x": 260,
+              "y": 721,
+              "target": "",
+              "article": true
+            }
+          ]
+        },
+        {
+          "name": "phone:pinned-closed",
+          "passed": true,
+          "pointerEvents": "none",
+          "hover": false,
+          "focusWithin": false,
+          "open": false,
+          "hits": [
+            {
+              "x": 188,
+              "y": 338.8,
+              "target": "",
+              "article": true
+            },
+            {
+              "x": 332,
+              "y": 476.2,
+              "target": "",
+              "article": true
+            },
+            {
+              "x": 260,
+              "y": 721,
+              "target": "",
+              "article": true
+            }
+          ]
+        },
+        {
+          "name": "phone:closed-right-body-scroll",
+          "passed": true,
+          "scrollTop": 432,
+          "touchStarts": [
+            {
+              "target": "",
+              "article": true,
+              "prevented": false
+            }
+          ]
+        },
+        {
+          "name": "phone:closed-left-body-scroll",
+          "passed": true,
+          "scrollTop": 445,
+          "touchStarts": [
+            {
+              "target": "",
+              "article": true,
+              "prevented": false
+            }
+          ]
+        },
+        {
+          "name": "phone:edge-button-opens-list",
+          "passed": true,
+          "pointerEvents": "auto",
+          "open": true,
+          "edgeHit": true,
+          "listDisplay": "block"
+        },
+        {
+          "name": "phone:open-list-scrolls",
+          "passed": true,
+          "listScrollTop": 454,
+          "bodyScrollTop": 0
+        },
+        {
+          "name": "phone:tap-close-restores-body-hit",
+          "passed": true,
+          "pointerEvents": "none",
+          "hover": false,
+          "focusWithin": true,
+          "open": false,
+          "hits": [
+            {
+              "x": 188,
+              "y": 338.8,
+              "target": "",
+              "article": true
+            },
+            {
+              "x": 332,
+              "y": 476.2,
+              "target": "",
+              "article": true
+            },
+            {
+              "x": 260,
+              "y": 721,
+              "target": "",
+              "article": true
+            }
+          ]
+        },
+        {
+          "name": "tablet:closed-idle",
+          "passed": true,
+          "pointerEvents": "none",
+          "hover": false,
+          "focusWithin": false,
+          "open": false,
+          "hits": [
+            {
+              "x": 800,
+              "y": 280,
+              "target": "",
+              "article": true
+            },
+            {
+              "x": 944,
+              "y": 388,
+              "target": "",
+              "article": true
+            },
+            {
+              "x": 872,
+              "y": 574,
+              "target": "",
+              "article": true
+            }
+          ]
+        },
+        {
+          "name": "tablet:closed-residual-revealed",
+          "passed": true,
+          "pointerEvents": "none",
+          "hover": false,
+          "focusWithin": false,
+          "open": false,
+          "hits": [
+            {
+              "x": 800,
+              "y": 280,
+              "target": "",
+              "article": true
+            },
+            {
+              "x": 944,
+              "y": 388,
+              "target": "",
+              "article": true
+            },
+            {
+              "x": 872,
+              "y": 574,
+              "target": "",
+              "article": true
+            }
+          ]
+        },
+        {
+          "name": "tablet:closed-residual-expanded",
+          "passed": true,
+          "pointerEvents": "none",
+          "hover": false,
+          "focusWithin": false,
+          "open": false,
+          "hits": [
+            {
+              "x": 800,
+              "y": 280,
+              "target": "",
+              "article": true
+            },
+            {
+              "x": 944,
+              "y": 388,
+              "target": "",
+              "article": true
+            },
+            {
+              "x": 872,
+              "y": 574,
+              "target": "",
+              "article": true
+            }
+          ]
+        },
+        {
+          "name": "tablet:closed-parent-focus-within",
+          "passed": true,
+          "pointerEvents": "none",
+          "hover": false,
+          "focusWithin": true,
+          "open": false,
+          "hits": [
+            {
+              "x": 800,
+              "y": 280,
+              "target": "",
+              "article": true
+            },
+            {
+              "x": 944,
+              "y": 388,
+              "target": "",
+              "article": true
+            },
+            {
+              "x": 872,
+              "y": 574,
+              "target": "",
+              "article": true
+            }
+          ]
+        },
+        {
+          "name": "tablet:closed-sticky-hover",
+          "passed": true,
+          "pointerEvents": "none",
+          "hover": false,
+          "focusWithin": false,
+          "open": false,
+          "hits": [
+            {
+              "x": 800,
+              "y": 280,
+              "target": "",
+              "article": true
+            },
+            {
+              "x": 944,
+              "y": 388,
+              "target": "",
+              "article": true
+            },
+            {
+              "x": 872,
+              "y": 574,
+              "target": "",
+              "article": true
+            }
+          ]
+        },
+        {
+          "name": "tablet:pinned-closed",
+          "passed": true,
+          "pointerEvents": "none",
+          "hover": false,
+          "focusWithin": false,
+          "open": false,
+          "hits": [
+            {
+              "x": 800,
+              "y": 280,
+              "target": "",
+              "article": true
+            },
+            {
+              "x": 944,
+              "y": 388,
+              "target": "",
+              "article": true
+            },
+            {
+              "x": 872,
+              "y": 574,
+              "target": "",
+              "article": true
+            }
+          ]
+        },
+        {
+          "name": "tablet:closed-right-body-scroll",
+          "passed": true,
+          "scrollTop": 342,
+          "touchStarts": [
+            {
+              "target": "",
+              "article": true,
+              "prevented": false
+            }
+          ]
+        },
+        {
+          "name": "tablet:closed-left-body-scroll",
+          "passed": true,
+          "scrollTop": 334,
+          "touchStarts": [
+            {
+              "target": "",
+              "article": true,
+              "prevented": false
+            }
+          ]
+        },
+        {
+          "name": "tablet:edge-button-opens-list",
+          "passed": true,
+          "pointerEvents": "auto",
+          "open": true,
+          "edgeHit": true,
+          "listDisplay": "block"
+        },
+        {
+          "name": "tablet:open-list-scrolls",
+          "passed": true,
+          "listScrollTop": 333,
+          "bodyScrollTop": 0
+        },
+        {
+          "name": "tablet:tap-close-restores-body-hit",
+          "passed": true,
+          "pointerEvents": "none",
+          "hover": false,
+          "focusWithin": true,
+          "open": false,
+          "hits": [
+            {
+              "x": 800,
+              "y": 280,
+              "target": "",
+              "article": true
+            },
+            {
+              "x": 944,
+              "y": 388,
+              "target": "",
+              "article": true
+            },
+            {
+              "x": 872,
+              "y": 574,
+              "target": "",
+              "article": true
+            }
+          ]
+        },
+        {
+          "name": "desktop:data-mobile-false:closed-body-hit",
+          "passed": true,
+          "pointerEvents": "none",
+          "hover": false,
+          "focusWithin": false
+        },
+        {
+          "name": "desktop:data-mobile-false:mouse-hover-opens",
+          "passed": true,
+          "pointerEvents": "auto",
+          "hover": false,
+          "focusWithin": false
+        },
+        {
+          "name": "desktop:data-mobile-false:escape-dismissal-hides-hovered-components",
+          "passed": true
+        },
+        {
+          "name": "desktop:data-mobile-false:edge-focus-opens",
+          "passed": true,
+          "pointerEvents": "auto",
+          "hover": false,
+          "focusWithin": true
+        },
+        {
+          "name": "desktop:data-mobile-false:leave-and-blur-restores-body-hit",
+          "passed": true,
+          "pointerEvents": "none",
+          "hover": false,
+          "focusWithin": false
+        },
+        {
+          "name": "desktop:legacy-attribute-absent:closed-body-hit",
+          "passed": true,
+          "pointerEvents": "none",
+          "hover": false,
+          "focusWithin": false
+        },
+        {
+          "name": "desktop:legacy-attribute-absent:mouse-hover-opens",
+          "passed": true,
+          "pointerEvents": "auto",
+          "hover": false,
+          "focusWithin": false
+        },
+        {
+          "name": "desktop:legacy-attribute-absent:escape-dismissal-hides-hovered-components",
+          "passed": true
+        },
+        {
+          "name": "desktop:legacy-attribute-absent:edge-focus-opens",
+          "passed": true,
+          "pointerEvents": "auto",
+          "hover": false,
+          "focusWithin": true
+        },
+        {
+          "name": "desktop:legacy-attribute-absent:leave-and-blur-restores-body-hit",
+          "passed": true,
+          "pointerEvents": "none",
+          "hover": false,
+          "focusWithin": false
+        }
+      ]
     },
-    {
-      "version": "1.4.18",
-      "viewport": {
-        "width": 1024,
-        "height": 768
+    "obsidianMobileEmulation": [
+      {
+        "version": "0.3.4",
+        "mode": "preview",
+        "viewport": {
+          "width": 1024,
+          "height": 768
+        },
+        "hit": "",
+        "covered": false,
+        "pointerEvents": "none",
+        "focusWithin": true,
+        "up": {
+          "before": 1000,
+          "scrollTop": 1105,
+          "commandPalette": false
+        },
+        "down": {
+          "before": 1105,
+          "scrollTop": 1000,
+          "commandPalette": false
+        }
       },
-      "modal": {
-        "x": 0,
-        "y": 12,
-        "width": 1024,
-        "height": 744,
-        "top": 12,
-        "right": 1024,
-        "bottom": 756,
-        "left": 0
+      {
+        "version": "0.3.4",
+        "mode": "source",
+        "viewport": {
+          "width": 1024,
+          "height": 768
+        },
+        "hit": "cm-sizer has-note-cover",
+        "covered": false,
+        "pointerEvents": "none",
+        "focusWithin": true,
+        "up": {
+          "before": 1000,
+          "scrollTop": 1105,
+          "commandPalette": false
+        },
+        "down": {
+          "before": 1105,
+          "scrollTop": 1000,
+          "commandPalette": false
+        }
       },
-      "minimumButtonHeight": 44,
-      "pinchScale": 1.8,
-      "rotated": true,
-      "reset": true,
-      "closed": true
-    }
-  ],
-  "desktopRestored": true,
+      {
+        "version": "0.3.4",
+        "mode": "preview",
+        "viewport": {
+          "width": 412,
+          "height": 915
+        },
+        "hit": "",
+        "covered": false,
+        "pointerEvents": "none",
+        "focusWithin": true,
+        "up": {
+          "before": 1000,
+          "scrollTop": 1105,
+          "commandPalette": false
+        },
+        "down": {
+          "before": 1105,
+          "scrollTop": 1000,
+          "commandPalette": false
+        }
+      },
+      {
+        "version": "0.3.4",
+        "mode": "source",
+        "viewport": {
+          "width": 412,
+          "height": 915
+        },
+        "hit": "cm-line HyperMD-header HyperMD-header-1",
+        "covered": false,
+        "pointerEvents": "none",
+        "focusWithin": true,
+        "up": {
+          "before": 1000,
+          "scrollTop": 1105,
+          "commandPalette": false
+        },
+        "down": {
+          "before": 1105,
+          "scrollTop": 1000,
+          "commandPalette": false
+        }
+      }
+    ],
+    "originalApplicationStateRestored": true
+  },
   "deviceAcceptance": [
     "Android WebView",
     "system back",
