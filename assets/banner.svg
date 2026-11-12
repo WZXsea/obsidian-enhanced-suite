@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 600" role="img" aria-labelledby="title desc">
+  <title id="title">Obsidian Enhanced Suite · Obsidian 插件增强套件</title>
+  <desc id="desc">面向桌面和安卓的六款独立插件，增强浮动搜索、图片导航、图片布局、表格调整、透明大纲与引用阅读。</desc>
+  <defs>
+    <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#111827"/><stop offset="1" stop-color="#17152d"/></linearGradient>
+    <linearGradient id="accent"><stop stop-color="#c4b5fd"/><stop offset="1" stop-color="#67e8f9"/></linearGradient>
+    <radialGradient id="glow"><stop stop-color="#6d28d9" stop-opacity=".22"/><stop offset="1" stop-color="#6d28d9" stop-opacity="0"/></radialGradient>
+    <style>text{font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif}.card{fill:#1c2339;stroke:#39415b;stroke-width:1}.icon{fill:none;stroke:#b8a4ff;stroke-width:2.7;stroke-linecap:round;stroke-linejoin:round}.label{fill:#f1f5f9;font-size:25px;font-weight:600}.copy{fill:#b6c0d5;font-size:20px}</style>
+  </defs>
+  <rect width="1440" height="600" rx="28" fill="url(#bg)"/>
+  <ellipse cx="1230" cy="50" rx="420" ry="370" fill="url(#glow)"/>
+  <path d="M64 55l15-13 15 13-5 23-18 1z" fill="url(#accent)"/>
+  <text x="109" y="69" fill="#c4b5fd" font-size="23" font-weight="600" letter-spacing="1">OBSIDIAN ENHANCED SUITE</text>
+  <text x="64" y="148" fill="#f8fafc" font-size="56" font-weight="700">让 Obsidian 更顺手</text>
+  <text x="66" y="195" fill="#b9c5de" font-size="26">从搜索到图文阅读，把常用操作放在手边。</text>
+  <rect x="1116" y="111" width="258" height="48" rx="24" fill="#2c2750" stroke="#5b4e89"/>
+  <text x="1245" y="143" text-anchor="middle" fill="#ded7ff" font-size="21">桌面 + 安卓 · 6 款插件</text>
+  <g transform="translate(64 239)">
+    <rect width="420" height="131" rx="18" class="card"/>
+    <g transform="translate(27 29)" class="icon"><circle cx="14" cy="14" r="11"/><path d="M22 22l11 11M4 42h33"/></g>
+    <text x="82" y="48" class="label">浮动搜索</text><text x="82" y="84" class="copy">搜索、预览，再回到当前思路</text>
+  </g>
+  <g transform="translate(510 239)">
+    <rect width="420" height="131" rx="18" class="card"/>
+    <g transform="translate(26 28)" class="icon"><rect width="36" height="35" rx="5"/><circle cx="11" cy="10" r="3"/><path d="M3 29l10-10 7 7 7-10 9 12M42 5v28"/></g>
+    <text x="82" y="48" class="label">图片导航与查看</text><text x="82" y="84" class="copy">缩略图定位，放大查看细节</text>
+  </g>
+  <g transform="translate(956 239)">
+    <rect width="420" height="131" rx="18" class="card"/>
+    <g transform="translate(26 28)" class="icon"><rect width="22" height="40" rx="4"/><rect x="29" width="15" height="17" rx="3"/><rect x="29" y="24" width="15" height="16" rx="3"/></g>
+    <text x="82" y="48" class="label">图片布局与缩放</text><text x="82" y="84" class="copy">画廊排版，正文图片随手调节</text>
+  </g>
+  <g transform="translate(64 391)">
+    <rect width="420" height="131" rx="18" class="card"/>
+    <g transform="translate(26 28)" class="icon"><rect width="42" height="35" rx="4"/><path d="M0 12h42M14 0v35M28 0v35M34 44h-9m0 0l4-4m-4 4l4 4"/></g>
+    <text x="82" y="48" class="label">表格调整</text><text x="82" y="84" class="copy">调节列宽、字号与显示密度</text>
+  </g>
+  <g transform="translate(510 391)">
+    <rect width="420" height="131" rx="18" class="card"/>
+    <g transform="translate(27 29)" class="icon"><path d="M0 3h40M9 15h31M9 27h25M18 39h22"/><circle cx="2" cy="15" r="1"/><circle cx="2" cy="27" r="1"/></g>
+    <text x="82" y="48" class="label">透明大纲</text><text x="82" y="84" class="copy">沿标题导航，跟上阅读位置</text>
+  </g>
+  <g transform="translate(956 391)">
+    <rect width="420" height="131" rx="18" class="card"/>
+    <g transform="translate(26 28)" class="icon"><rect width="43" height="28" rx="9"/><path d="M12 10h4v9m12-9h4v9M8 38h28M8 46h20"/></g>
+    <text x="82" y="48" class="label">引用徽标</text><text x="82" y="84" class="copy">聚合脚注，就近阅读与编辑</text>
+  </g>
+  <text x="65" y="565" fill="#98a8c6" font-size="19">独立安装 · 按需组合 · 插件源码随包提供</text>
+  <text x="1375" y="565" text-anchor="end" fill="#a5b4fc" font-size="19">WZXsea</text>
+</svg>
