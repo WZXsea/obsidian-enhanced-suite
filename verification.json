@@ -1,6 +1,6 @@
 {
-  "date": "2026-11-12",
-  "version": "0.1.8",
+  "date": "2026-11-13",
+  "version": "0.1.9",
   "buildPassed": true,
   "sourceInstalledMatch": {
     "image-layouts-enhanced": true
@@ -12,7 +12,7 @@
       "passed": true
     },
     {
-      "name": "鼠标等比拖动仅保存一次",
+      "name": "实时预览滚动补偿后鼠标拖动仅保存一次",
       "passed": true
     },
     {

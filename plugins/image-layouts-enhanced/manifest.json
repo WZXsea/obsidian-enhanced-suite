@@ -1,7 +1,7 @@
 {
   "id": "image-layouts-enhanced",
   "name": "Image Layouts Enhanced · 图片画廊",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "minAppVersion": "1.8.7",
   "description": "Native Markdown image galleries with grids, horizontal browsing and a thumbnail stage, integrated with Image Toolkit.",
   "author": "weizixun",

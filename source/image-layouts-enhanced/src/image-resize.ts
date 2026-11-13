@@ -87,7 +87,9 @@ export class ImageResizeHandle {
       target.addEventListener(type, callback, capture);
       this.visibleDispose.push(() => target.removeEventListener(type, callback, capture));
     };
-    listen(this.doc, 'scroll', () => this.hide(), true);
+    // 实时预览会随图片高度补偿滚动；拖动时跟随位置，主动滚轮另行结束操作。
+    listen(this.doc, 'scroll', () => { if (this.active) this.position(); else this.hide(); }, true);
+    listen(this.doc, 'wheel', () => this.hide(), true);
     listen(this.doc, 'keydown', event => {
       const key = event as KeyboardEvent;
       if (key.key === 'Escape' && !key.isComposing && key.keyCode !== 229) this.hide();

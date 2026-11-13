@@ -2611,7 +2611,11 @@ var ImageResizeHandle = class {
       target.addEventListener(type, callback, capture);
       this.visibleDispose.push(() => target.removeEventListener(type, callback, capture));
     };
-    listen(this.doc, "scroll", () => this.hide(), true);
+    listen(this.doc, "scroll", () => {
+      if (this.active) this.position();
+      else this.hide();
+    }, true);
+    listen(this.doc, "wheel", () => this.hide(), true);
     listen(this.doc, "keydown", (event) => {
       const key = event;
       if (key.key === "Escape" && !key.isComposing && key.keyCode !== 229) this.hide();
@@ -2939,8 +2943,13 @@ var ImageControls = class {
     });
     this.listen(doc, "scroll", (event) => {
       this.cancelPress();
+      if (this.resizer?.active) return;
       const target = event.target;
       if (!this.image || !target || target === this.doc || typeof target.contains === "function" && target.contains(this.image)) this.hide();
+    }, true);
+    this.listen(doc, "wheel", () => {
+      this.cancelPress();
+      this.hide();
     }, true);
     if (this.ownerWindow) this.listen(this.ownerWindow, "resize", () => this.hide());
   }

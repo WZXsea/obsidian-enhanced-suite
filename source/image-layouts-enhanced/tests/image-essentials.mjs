@@ -50,7 +50,7 @@ function instance(device){
 const width=(device,index)=>getImageWidth(store.value.imageSettings,device,'note.md',source,refs[index]);
 const browser=await chromium.launch({headless:true,executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'});
 try{
- // 复用已验证的单一平板触摸场景；同一页面也接受真实鼠标输入。
+ // 保留平板触摸流程；鼠标拖动单独使用实时预览结构。
  const page=await browser.newPage({viewport:{width:1024,height:768},isMobile:true,hasTouch:true});
  const svg='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="800" height="400"><rect width="800" height="400" fill="#9bb5da"/></svg>');
  await page.setContent(`<meta name="viewport" content="width=device-width,initial-scale=1"><style>${css}
@@ -72,12 +72,36 @@ try{
  assert.ok(await page.evaluate(()=>{const a=image.getBoundingClientRect(),b=document.querySelector('#frame').getBoundingClientRect();return image.classList.contains('ilg-note-image')&&Math.abs(a.left+a.width/2-b.left-b.width/2)<1;}));
  passed('独立正文图片居中');
 
- const mouseImage=await page.locator('#image').boundingBox();
- await page.mouse.move(mouseImage.x+10,mouseImage.y+mouseImage.height/2);
+ const mousePage=await browser.newPage({viewport:{width:1024,height:768},isMobile:false,hasTouch:false});
+ await mousePage.setContent(`<style>${css}body{margin:0}.cm-scroller{height:600px;overflow:auto}.cm-content{width:765px;margin:0 24px;outline:none}.cm-line{width:765px}.spacer{height:150px}.after{height:2000px}</style>
+ <div class="markdown-source-view mod-cm6"><div class="cm-scroller"><div class="cm-content" contenteditable="true"><div class="spacer"></div><div class="cm-line"><span class="image-embed" contenteditable="false"><span class="image-wrapper"><img id="lp-image" src="${svg}" style="width:210px;height:105px"></span></span></div><div class="after"></div></div></div></div>`);
+ await mousePage.addScriptTag({content:tools.outputFiles[0].text});
+ await mousePage.evaluate(()=>{
+  window.image=document.querySelector('#lp-image');window.saved=[];window.localWidth=undefined;window.compensated=false;window.compensationScrolled=false;
+  window.scroller=document.querySelector('.cm-scroller');scroller.scrollTop=100;
+  scroller.addEventListener('scroll',()=>{if(compensated)compensationScrolled=true;});
+  document.querySelector('.cm-content').focus({preventScroll:true});
+  window.controls=new NativeControls.ImageControls(document,()=>({grouped:false,standalone:true,block:true,layout(){},resize:{save:async width=>{saved.push(width);localWidth=width;presentation.refresh();}}}));
+  window.presentation=new NativeControls.ImagePresentation(document,img=>img===image?{centered:true,block:true,width:localWidth,previewing:controls.isResizing(image)}:undefined);
+  window.compensation=new ResizeObserver(()=>{
+   if(!compensated&&controls.isResizing(image)&&image.getBoundingClientRect().width>210.5){compensated=true;scroller.scrollTop+=12;}
+  });compensation.observe(image);
+ });
+ await mousePage.locator('#lp-image').evaluate(image=>image.decode());await mousePage.waitForTimeout(70);
+ const mouseImage=await mousePage.locator('#lp-image').boundingBox();
+ await mousePage.mouse.move(mouseImage.x+10,mouseImage.y+mouseImage.height/2);
+ const mouseHandle=await mousePage.locator('.ilg-image-resize:not([hidden]) .ilg-image-resize-handle').boundingBox();
+ const mousePoint={x:mouseHandle.x+mouseHandle.width/2,y:mouseHandle.y+mouseHandle.height/2};
+ await mousePage.mouse.move(mousePoint.x,mousePoint.y);await mousePage.mouse.down();await mousePage.mouse.move(mousePoint.x+20,mousePoint.y);await mousePage.waitForTimeout(70);
+ await mousePage.waitForFunction(()=>window.compensationScrolled,{},{timeout:1000});
+ const moving=await mousePage.evaluate(()=>({active:controls.isResizing(image),width:image.getBoundingClientRect().width,compensated,compensationScrolled,scrollTop:scroller.scrollTop}));
+ assert.ok(moving.compensated&&moving.compensationScrolled&&moving.scrollTop>100&&moving.active&&moving.width>210,JSON.stringify(moving));
+ await mousePage.mouse.up();await mousePage.waitForTimeout(80);
+ assert.ok(await mousePage.evaluate(()=>saved.length===1&&saved[0]===250&&Math.abs(image.getBoundingClientRect().width/image.getBoundingClientRect().height-2)<.02));
+ await mousePage.evaluate(()=>{compensation.disconnect();controls.destroy();presentation.destroy();});await mousePage.close();
+ passed('实时预览滚动补偿后鼠标拖动仅保存一次');
+
  const handlePoint=async()=>{const r=await page.locator('.ilg-image-resize:not([hidden]) .ilg-image-resize-handle').boundingBox();return{x:r.x+r.width/2,y:r.y+r.height/2};};
- let point=await handlePoint();await page.mouse.move(point.x,point.y);await page.mouse.down();await page.mouse.move(point.x+20,point.y);await page.waitForTimeout(40);await page.mouse.up();await page.waitForTimeout(80);
- assert.ok(await page.evaluate(()=>saved.length===1&&saved[0]===250&&Math.abs(image.getBoundingClientRect().width/ image.getBoundingClientRect().height-2)<.02));
- passed('鼠标等比拖动仅保存一次');
 
  const client=await page.context().newCDPSession(page);
  const touch=(type,point)=>client.send('Input.dispatchTouchEvent',{type,touchPoints:point?[point]:[]});
@@ -85,9 +109,9 @@ try{
  const r=await page.locator('#image').boundingBox();
  await touch('touchStart',{x:r.x+r.width/2,y:r.y+30});await page.waitForTimeout(550);await touch('touchEnd');await page.waitForTimeout(55);
  assert.ok(await page.evaluate(()=>!document.querySelector('.ilg-image-controls').hidden&&restored===0));
- point=await handlePoint();await touch('touchStart',point);await touch('touchMove',{x:point.x+20,y:point.y});await page.waitForTimeout(45);await touch('touchEnd');await page.waitForTimeout(80);
+ let point=await handlePoint();await touch('touchStart',point);await touch('touchMove',{x:point.x+20,y:point.y});await page.waitForTimeout(45);await touch('touchEnd');await page.waitForTimeout(80);
  await page.locator('[aria-label="恢复笔记中的图片尺寸"]').tap();await page.waitForTimeout(60);
- assert.ok(await page.evaluate(()=>saved.length===2&&saved[1]===290&&restored===1&&Math.abs(image.getBoundingClientRect().width-210)<1));
+ assert.ok(await page.evaluate(()=>saved.length===1&&saved[0]===250&&restored===1&&Math.abs(image.getBoundingClientRect().width-210)<1));
  passed('平板长按释放、后续拖动和恢复');
 
  const desktop=instance('desktop');await desktop.resize(0,320);
@@ -118,7 +142,7 @@ try{
  await page.evaluate(()=>{document.querySelector('#scroller').scrollTop=0;});await page.waitForTimeout(70);await page.evaluate(()=>controls.show(image));
  point=await handlePoint();await touch('touchStart',point);await touch('touchMove',{x:point.x+20,y:point.y});await page.waitForTimeout(40);await touch('touchCancel');
  await page.evaluate(()=>{controls.destroy();presentation.destroy();});
- assert.ok(await page.evaluate(()=>saved.length===2&&image.style.cssText===originalStyle&&!document.body.classList.contains('ilg-local-image-controls')&&document.querySelectorAll('.ilg-image-controls,.ilg-image-resize').length===0&&getComputedStyle(document.querySelector('.image-resize-corner')).display!=='none'));
+ assert.ok(await page.evaluate(()=>saved.length===1&&image.style.cssText===originalStyle&&!document.body.classList.contains('ilg-local-image-controls')&&document.querySelectorAll('.ilg-image-controls,.ilg-image-resize').length===0&&getComputedStyle(document.querySelector('.image-resize-corner')).display!=='none'));
  passed('正文可滚动，取消和卸载释放控件');
 
  assert.equal(typeof loadPlugin(),'function');
@@ -126,4 +150,5 @@ try{
  passed('实际发布bundle可在移动环境加载');
  await client.detach();
 }finally{await browser.close();}
-await writeFile(path.join(project,'..','qa','image-native-controls-20261112','essentials-results.json'),JSON.stringify({date:'2026-11-12',version:manifest.version,total:10,checks,failures:[]},null,2)+'\n');
+const date=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+await writeFile(path.join(project,'..','qa','image-native-controls-20261112','essentials-results.json'),JSON.stringify({date,version:manifest.version,total:10,checks,failures:[]},null,2)+'\n');

@@ -1,6 +1,6 @@
 {
-  "date": "2026-11-12",
-  "tag": "android-20261112-images",
+  "date": "2026-11-13",
+  "tag": "images-0.1.9-20261113",
   "plugins": [
     {
       "id": "float-search",
@@ -31,13 +31,13 @@
     {
       "id": "image-layouts-enhanced",
       "name": "图片布局与正文图片控制",
-      "version": "0.1.8",
+      "version": "0.1.9",
       "sourceDirectory": "source/image-layouts-enhanced",
       "minAppVersion": "1.8.7",
       "isDesktopOnly": false,
       "files": {
-        "main.js": "8067bab4eb480c888dc8d881733d882fe63a483bed37a64c12672a955997873e",
-        "manifest.json": "9c97606059927509001993d2f4f22a4818885ce44c853f3f928c9c0474de1e84",
+        "main.js": "04762f995d714768fc3dfa0269d36cec26827eebcd18783f28bcdb8e78379388",
+        "manifest.json": "1a5175c9c114c3d2a4f31adf6dd47c8518178e221f052cefb99664e89fa3bdaf",
         "styles.css": "28eaf4c31a53d558a338ebe75983620ba0e8232cd1495fb36edabbb7f2f6c753"
       }
     },

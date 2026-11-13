@@ -106,10 +106,12 @@ export class ImageControls {
     this.listen(doc, 'keydown', (event) => { if ((event as KeyboardEvent).key === 'Escape') this.hide(); });
     this.listen(doc, 'scroll', event => {
       this.cancelPress();
+      if (this.resizer?.active) return;
       const target = event.target as Node | null;
       if (!this.image || !target || target === this.doc ||
         (typeof target.contains === 'function' && target.contains(this.image))) this.hide();
     }, true);
+    this.listen(doc, 'wheel', () => { this.cancelPress(); this.hide(); }, true);
     if (this.ownerWindow) this.listen(this.ownerWindow, 'resize', () => this.hide());
   }
 
