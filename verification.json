@@ -158,5 +158,18 @@
     "originalSameContentMergePreserved": true,
     "filledCellWithBlankCells": true,
     "nonTopLeftContentRestored": true
+  },
+  "tableMenuPosition": {
+    "version": "1.0.6",
+    "automatedTests": {
+      "total": 39,
+      "passed": 39
+    },
+    "buildPassed": true,
+    "runtimePlatform": "macOS Obsidian",
+    "aboveGap": 6.5,
+    "belowGap": 6,
+    "withinViewport": true,
+    "sourcePreserved": true
   }
 }

@@ -143,6 +143,32 @@ function fixture({source = false} = {}) {
   };
 }
 
+test('a tall table keeps its merge menu above the trigger when upper space is available', () => {
+  const f = fixture();
+  f.control.button.rect = {left:849, top:404, right:875, bottom:424, width:26, height:20};
+  f.table.rect = {left:176, top:442, right:941, bottom:1600, width:765, height:1158};
+  f.open();
+  assert.equal(parseFloat(f.menu().style.top) + f.menu().offsetHeight, 398);
+  assert.equal(parseFloat(f.menu().style.left), 635);
+});
+
+test('a merge trigger near the visual viewport top opens directly below it', () => {
+  const f = fixture();
+  f.win.visualViewport = {offsetLeft:12, offsetTop:40, width:360, height:500,addEventListener(){},removeEventListener(){}};
+  f.control.button.rect = {left:290, top:60, right:316, bottom:84, width:26, height:24};
+  f.table.rect = {left:50, top:100, right:350, bottom:1200, width:300, height:1100};
+  f.open();
+  assert.equal(parseFloat(f.menu().style.top), 90);
+  assert.equal(parseFloat(f.menu().style.left), 76);
+});
+
+test('selection status height changes retain the menu gap to its trigger', () => {
+  const f = fixture();
+  f.control.button.rect = {left:849, top:404, right:875, bottom:424, width:26, height:20};
+  f.open(); f.menu().offsetHeight = 220; f.tap(0,0);
+  assert.equal(parseFloat(f.menu().style.top) + f.menu().offsetHeight, 398);
+});
+
 test('opening the merge menu immediately enables cell selection', () => {
   const f = fixture(); f.open();
   assert.equal(f.table.classList.contains('tcr-merge-picking'), true);

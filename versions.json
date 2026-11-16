@@ -1,6 +1,6 @@
 {
   "date": "2026-11-16",
-  "tag": "images-tables-20261116",
+  "tag": "table-menu-1.0.6-20261116",
   "plugins": [
     {
       "id": "float-search",
@@ -44,14 +44,14 @@
     {
       "id": "table-column-resize",
       "name": "表格调整",
-      "version": "1.0.5",
+      "version": "1.0.6",
       "sourceDirectory": "source/table-column-resize-custom",
       "minAppVersion": "1.4.0",
       "isDesktopOnly": false,
       "files": {
-        "main.js": "b2546ed7bbd00f244a6620191ba06268c1ab766814a83a42bb4c516fc2d4bbd6",
-        "manifest.json": "f92b71c581be8e5e315c24e4432664711d569bcdc4494600c6d2efd9080dac48",
-        "styles.css": "b4518ba57d63da7b9bdc21d94100a028b17d872378e665f8cd8f1351cec7a6af"
+        "main.js": "252852860baed32581d47bc92200fc5dd749bc3ea92a0226ffe66d04b97d86da",
+        "styles.css": "b4518ba57d63da7b9bdc21d94100a028b17d872378e665f8cd8f1351cec7a6af",
+        "manifest.json": "2dc7f03249ceeca5b09c6035258347e7d174bfc3bc5e629cdd89073d2fb8cc67"
       }
     },
     {

@@ -99,6 +99,7 @@ function setupTableMerge(plugin, table, fileKey, toolbar) {
     pickButton.textContent = picking ? '重新选择区域' : '选择合并区域';
     editButton.textContent = editing ? '返回合并显示' : '编辑原表';
     menu.querySelector('.tcr-merge-clear').disabled = !renderer.ranges.length;
+    position();
   };
   const endSelection = () => {
     pointerSelection.reset();
@@ -139,14 +140,9 @@ function setupTableMerge(plugin, table, fileKey, toolbar) {
   const position = () => {
     if (!menu) return;
     const rect = button.getBoundingClientRect();
-    if (picking) {
-      const bounds = table.getBoundingClientRect(), width = menu.offsetWidth;
-      const right = bounds.right + 8, left = bounds.left - width - 8;
-      tcrPositionMenu(menu, rect, win, {
-        left: right + width <= win.innerWidth - 8 ? right : left >= 8 ? left : rect.right - width,
-        top: bounds.bottom + 8
-      });
-    } else tcrPositionMenu(menu, rect, win);
+    const viewportTop = (win.visualViewport?.offsetTop || 0) + 8;
+    const above = rect.top - menu.offsetHeight - 6;
+    tcrPositionMenu(menu, rect, win, above >= viewportTop ? {top: above} : undefined);
   };
   const pointAt = event => {
     const target = event.type === 'pointerdown' ? event.target : doc.elementFromPoint?.(event.clientX, event.clientY) || event.target;

@@ -62,7 +62,7 @@ for text, loader, filename in [(js, 'js', 'main.js'), (css, 'css', 'styles.css')
     result = subprocess.run(args, input=text, text=True, capture_output=True, check=True)
     (root / filename).write_text(result.stdout)
 manifest = json.loads((root / 'upstream/manifest.json').read_text())
-manifest['version'] = '1.0.5'
+manifest['version'] = '1.0.6'
 manifest['isDesktopOnly'] = False
 (root / 'manifest.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n')
-print('Built local Table Column Resize 1.0.5 with merge range selection')
+print('Built local Table Column Resize 1.0.6 with anchored merge menu')
