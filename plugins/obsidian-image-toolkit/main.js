@@ -1980,7 +1980,12 @@ class ContainerView {
                     ImgUtil.invertImgColor(activeImg.imgViewEl, activeImg.invertColor);
                     break;
                 case 'toolbar_copy':
-                    ImgUtil.copyImage(activeImg.imgViewEl, activeImg.curWidth, activeImg.curHeight);
+                    void this.plugin.noteImageStage.copyImage(activeImg.imgViewEl).then(() => {
+                        new obsidian.Notice(t('COPY_IMAGE_SUCCESS'));
+                    }).catch(error => {
+                        new obsidian.Notice(t('COPY_IMAGE_ERROR') + ' ' + (error?.message ?? String(error)));
+                        console.error('Image Toolkit: copy image', error);
+                    });
                     break;
                 case 'toolbar_close':
                     this.closeContainerView(event, activeImg);
@@ -4424,6 +4429,37 @@ var DesktopPreviewTools = class {
   }
 };
 
+// src/image-copy.ts
+async function copyOriginalImage(image, readRemote) {
+  const doc = image.ownerDocument, win = doc.defaultView;
+  const src = image.currentSrc || image.src;
+  let objectUrl;
+  try {
+    let source = src;
+    if (/^https?:\/\//i.test(src)) {
+      const response = await readRemote(src);
+      objectUrl = win.URL.createObjectURL(new win.Blob([response.arrayBuffer], { type: response.headers["content-type"] || "application/octet-stream" }));
+      source = objectUrl;
+    }
+    const original = new win.Image();
+    original.crossOrigin = "anonymous";
+    original.src = source;
+    await original.decode();
+    const canvas = doc.createElement("canvas");
+    canvas.width = original.naturalWidth;
+    canvas.height = original.naturalHeight;
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("\u65E0\u6CD5\u521B\u5EFA\u56FE\u7247\u590D\u5236\u753B\u5E03");
+    context.fillStyle = "#fff";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(original, 0, 0);
+    const blob = await new Promise((resolve, reject) => canvas.toBlob((value) => value ? resolve(value) : reject(new Error("PNG \u7F16\u7801\u5931\u8D25")), "image/png"));
+    await win.navigator.clipboard.write([new win.ClipboardItem({ "image/png": blob })]);
+  } finally {
+    if (objectUrl) win.URL.revokeObjectURL(objectUrl);
+  }
+}
+
 // src/main.ts
 var NoteImageStage = class extends import_obsidian3.Plugin {
   host;
@@ -4434,6 +4470,9 @@ var NoteImageStage = class extends import_obsidian3.Plugin {
   mobileViewer = null;
   mobileOpenSequence = 0;
   desktopPreviews = /* @__PURE__ */ new Map();
+  copyImage(image) {
+    return copyOriginalImage(image, import_obsidian3.requestUrl);
+  }
   prepareDesktopPreview(container, origin) {
     const root = container.imgInfo.oitContainerEl;
     if (!root?.classList.contains("oit-normal")) return;

@@ -1,4 +1,4 @@
-import {MarkdownView,Menu,Notice,Platform,Plugin,TFile,debounce} from 'obsidian';
+import {MarkdownView,Menu,Notice,Platform,Plugin,TFile,debounce,requestUrl} from 'obsidian';
 import {extractImages,ImageReference} from './images';
 import {ImageViewer,DisplayImage} from './viewer';
 import {pickImageAtLine,pickVisibleImage} from './follow';
@@ -8,6 +8,7 @@ import {navigatePreviewImage,ImageNavigationBridge} from './image-navigation';
 import {appendPixelFlower} from './pixel-flower';
 import {StageRegistry,isStageRootMounted,canReuseStageRender,pickStageSource,PaneTimers} from './stage-lifecycle';
 import {DesktopPreviewTools} from './desktop-preview';
+import {copyOriginalImage} from './image-copy';
 interface DesktopPreviewContainer {
  imgInfo:{oitContainerEl:HTMLElement|null};
  imgGlobalStatus:{dragging:boolean;arrowUp:boolean;arrowDown:boolean;arrowLeft:boolean;arrowRight:boolean};
@@ -33,6 +34,7 @@ export default class NoteImageStage extends Plugin {
  private mobileViewer:ImageViewer|null=null;
  private mobileOpenSequence=0;
  private readonly desktopPreviews=new Map<DesktopPreviewContainer,DesktopPreviewTools>();
+ copyImage(image:HTMLImageElement){return copyOriginalImage(image,requestUrl);}
  prepareDesktopPreview(container:DesktopPreviewContainer,origin:HTMLImageElement){
   const root=container.imgInfo.oitContainerEl;if(!root?.classList.contains('oit-normal'))return;
   let tools=this.desktopPreviews.get(container);

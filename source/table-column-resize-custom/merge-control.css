@@ -6,13 +6,14 @@
 .tcr-merge-menu .tcr-merge-apply { color: var(--interactive-accent); }
 .tcr-merge-menu button:disabled { opacity: 0.4; cursor: default; }
 .tcr-merge-picking td, .tcr-merge-picking th { cursor: crosshair; }
+.tcr-merge-picking { user-select: none; -webkit-user-select: none; }
 .tcr-merge-selected { outline: 2px solid var(--interactive-accent); outline-offset: -2px; background: var(--background-modifier-hover) !important; }
 .tcr-merge-editing { outline: 1px dashed var(--interactive-accent); outline-offset: 2px; }
 
 table[data-tcr] .tcr-merge-covered { display: none !important; }
 table.tcr-has-merges td[rowspan], table.tcr-has-merges th[rowspan] { vertical-align: middle !important; }
 
-.tcr-merge-menu.is-picking .tcr-merge-help, .tcr-merge-menu.is-picking .tcr-merge-edit, .tcr-merge-menu.is-picking .tcr-merge-clear { display: none; }
+.tcr-merge-menu.is-picking .tcr-merge-help { display: none; }
 
 /* Native editor wrappers fill the cell height; release it for rowspan centering. */
 table[data-tcr].tcr-has-merges [rowspan]:not([rowspan="1"]) > .table-cell-wrapper {

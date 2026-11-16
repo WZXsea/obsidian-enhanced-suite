@@ -10,6 +10,17 @@ function tcrMergeText(cell) {
   }
   return (contents.textContent || '').replace(/\s+/g, ' ').trim();
 }
+// Empty cells can extend one text value; repeated instances keep the same rule.
+function tcrMergeContent(cells) {
+  let text = '', source = cells[0] || null;
+  for (const cell of cells) {
+    const value = tcrMergeText(cell);
+    if (!value) continue;
+    if (text && value !== text) return {valid: false, text, source};
+    if (!text) { text = value; source = cell; }
+  }
+  return {valid: true, text, source};
+}
 function setupTableMergeRendering(plugin, table, key) {
   plugin.settings.tableMerges ||= {};
   plugin._mergeRenderKeys ||= new Map();
@@ -34,7 +45,13 @@ function setupTableMergeRendering(plugin, table, key) {
   };
   const restore = () => {
     for (const item of changed) {
-      const {cell, covered, colspan, rowspan, style} = item;
+      const {cell, covered, colspan, rowspan, style, content} = item;
+      if (content) {
+        const sameChildren = (host, nodes) => host.childNodes.length === nodes.length && nodes.every((node, index) => host.childNodes[index] === node);
+        // Preserve a native rerender that may have replaced either host meanwhile.
+        if (sameChildren(content.anchor, content.displayed)) content.anchor.replaceChildren(...content.original);
+        if (sameChildren(content.source, content.remaining)) content.source.replaceChildren(...content.sourceOriginal);
+      }
       cell.classList.toggle('tcr-merge-covered', covered);
       for (const [name, value] of [['colspan', colspan], ['rowspan', rowspan]]) {
         if (value === null) cell.removeAttribute(name);
@@ -69,12 +86,13 @@ function setupTableMergeRendering(plugin, table, key) {
       for (let r = r1; r <= r2; r++) for (let c = c1; c <= c2; c++) cells.push(grid[r]?.[c]);
       if (cells.some(cell => !cell)) continue;
       const group = cells[0].parentElement.parentElement;
-      const text = tcrMergeText(cells[0]);
-      if (cells.some(cell => cell.parentElement.parentElement !== group || tcrMergeText(cell) !== text)) continue;
+      if (cells.some(cell => cell.parentElement.parentElement !== group)) continue;
+      const content = tcrMergeContent(cells);
+      if (!content.valid) continue;
       const coords = cells.map(cell => `${cell.dataset.tcrMergeRow}:${cell.dataset.tcrMergeCol}`);
       if (coords.some(coord => occupied.has(coord))) continue;
       coords.forEach(coord => occupied.add(coord));
-      accepted.push({r1, c1, r2, c2, text});
+      accepted.push({r1, c1, r2, c2, text: content.text});
     }
     return accepted;
   };
@@ -83,10 +101,22 @@ function setupTableMergeRendering(plugin, table, key) {
     if (suspended) return;
     for (const range of validate(plugin.settings.tableMerges[key])) {
       const {r1, c1, r2, c2} = range;
+      const cells = [];
+      for (let r = r1; r <= r2; r++) for (let c = c1; c <= c2; c++) cells.push(grid[r][c]);
+      const content = tcrMergeContent(cells);
       for (let r = r1; r <= r2; r++) for (let c = c1; c <= c2; c++) {
         const cell = grid[r][c], anchor = r === r1 && c === c1;
         const item = {cell, covered: cell.classList.contains('tcr-merge-covered'), colspan: cell.getAttribute('colspan'), rowspan: cell.getAttribute('rowspan')};
         if (anchor) {
+          if (content.text && content.source !== cell) {
+            const target = cell.querySelector('.table-cell-wrapper') || cell;
+            const source = content.source.querySelector('.table-cell-wrapper') || content.source;
+            const original = Array.from(target.childNodes), sourceOriginal = Array.from(source.childNodes);
+            const moved = sourceOriginal.filter(node => !node.matches?.('.tcr-handle, .table-col-drag-handle, .table-row-drag-handle, .table-cell-input'));
+            const handles = original.filter(node => node.matches?.('.tcr-handle, .table-col-drag-handle, .table-row-drag-handle'));
+            target.replaceChildren(...handles, ...moved);
+            item.content = {anchor: target, source, original, sourceOriginal, displayed: Array.from(target.childNodes), remaining: Array.from(source.childNodes)};
+          }
           cell.colSpan = c2 - c1 + 1;
           cell.rowSpan = r2 - r1 + 1;
           if (c2 > c1) {

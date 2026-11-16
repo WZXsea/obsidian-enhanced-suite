@@ -1,6 +1,6 @@
 {
-  "date": "2026-11-13",
-  "tag": "images-0.1.9-20261113",
+  "date": "2026-11-16",
+  "tag": "images-tables-20261116",
   "plugins": [
     {
       "id": "float-search",
@@ -18,13 +18,13 @@
     {
       "id": "obsidian-image-toolkit",
       "name": "图片查看与导航",
-      "version": "1.4.18",
+      "version": "1.4.19",
       "sourceDirectory": "source/image-toolkit-upgraded",
       "minAppVersion": "1.8.7",
       "isDesktopOnly": false,
       "files": {
-        "main.js": "2366add8b6b01ca21f700dfd3b1014e005f873f29f19fd3fd9d69e6fca3151b2",
-        "manifest.json": "6a8ecb15c3d2de67cfdfc877baeac0741c6b90a8ddea74f90c59296fd88da100",
+        "main.js": "b7dcbaad4add36c9a94cb6d15aacefe1267478ec0df8ae258f3a349e6346e4c1",
+        "manifest.json": "01aa29e0c98521c86cae2ed6918b4c77794f33c3d46475e10d53543536f48b3d",
         "styles.css": "9b9492ba03734098168a53bb9b098072035c363bf7dedf639283e4e3ecabcf61"
       }
     },
@@ -44,14 +44,14 @@
     {
       "id": "table-column-resize",
       "name": "表格调整",
-      "version": "1.0.4",
+      "version": "1.0.5",
       "sourceDirectory": "source/table-column-resize-custom",
       "minAppVersion": "1.4.0",
       "isDesktopOnly": false,
       "files": {
-        "main.js": "eb7e477afb2bde9e8d1c29dc07d87a5bdd140cd257eea82b2e8b9c318e424c82",
-        "manifest.json": "76f2035bd855f96d9e4f3b3c62176442bef3db75530ec9a184e328247911412e",
-        "styles.css": "9c77bcfc6d8045e24b28067f835f0ab1252a381012ab36e62db8d92357f32df0"
+        "main.js": "b2546ed7bbd00f244a6620191ba06268c1ab766814a83a42bb4c516fc2d4bbd6",
+        "manifest.json": "f92b71c581be8e5e315c24e4432664711d569bcdc4494600c6d2efd9080dac48",
+        "styles.css": "b4518ba57d63da7b9bdc21d94100a028b17d872378e665f8cd8f1351cec7a6af"
       }
     },
     {

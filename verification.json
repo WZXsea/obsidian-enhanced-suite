@@ -1,51 +1,162 @@
 {
-  "date": "2026-11-13",
-  "version": "0.1.9",
+  "date": "2026-11-16",
+  "component": "obsidian-image-toolkit",
+  "version": "1.4.19",
   "buildPassed": true,
-  "sourceInstalledMatch": {
-    "image-layouts-enhanced": true
+  "automatedTests": {
+    "total": 54,
+    "passed": 54
   },
-  "total": 10,
-  "checks": [
-    {
-      "name": "独立正文图片居中",
-      "passed": true
+  "sourceInstalledMatch": {
+    "obsidian-image-toolkit": true,
+    "table-column-resize": true
+  },
+  "runtimePlatform": "macOS Obsidian",
+  "wholeImageCopy": {
+    "screenshot_png_half_scale": {
+      "width": 734,
+      "height": 506,
+      "different": 0
     },
-    {
-      "name": "实时预览滚动补偿后鼠标拖动仅保存一次",
-      "passed": true
+    "screenshot_png_quarter_rotated": {
+      "width": 734,
+      "height": 506,
+      "different": 0
     },
-    {
-      "name": "平板长按释放、后续拖动和恢复",
-      "passed": true
+    "local_png": {
+      "width": 2384,
+      "height": 458,
+      "different": 0
     },
-    {
-      "name": "本地尺寸重新加载",
-      "passed": true
+    "remote_jpeg": {
+      "width": 705,
+      "height": 614,
+      "different": 0
     },
-    {
-      "name": "各设备尺寸独立保存",
-      "passed": true
-    },
-    {
-      "name": "同一URL的不同引用各自保存",
-      "passed": true
-    },
-    {
-      "name": "正文和图床URL保持原字节",
-      "passed": true
-    },
-    {
-      "name": "恢复尺寸保留旧画廊配置",
-      "passed": true
-    },
-    {
-      "name": "正文可滚动，取消和卸载释放控件",
-      "passed": true
-    },
-    {
-      "name": "实际发布bundle可在移动环境加载",
-      "passed": true
+    "data_png_white_background": {
+      "width": 1600,
+      "height": 1000,
+      "different": 0
     }
-  ]
+  },
+  "existingCrop": {
+    "width": 400,
+    "height": 200
+  },
+  "previousComponentVerification": {
+    "date": "2026-11-13",
+    "version": "0.1.9",
+    "buildPassed": true,
+    "sourceInstalledMatch": {
+      "image-layouts-enhanced": true
+    },
+    "total": 10,
+    "checks": [
+      {
+        "name": "独立正文图片居中",
+        "passed": true
+      },
+      {
+        "name": "实时预览滚动补偿后鼠标拖动仅保存一次",
+        "passed": true
+      },
+      {
+        "name": "平板长按释放、后续拖动和恢复",
+        "passed": true
+      },
+      {
+        "name": "本地尺寸重新加载",
+        "passed": true
+      },
+      {
+        "name": "各设备尺寸独立保存",
+        "passed": true
+      },
+      {
+        "name": "同一URL的不同引用各自保存",
+        "passed": true
+      },
+      {
+        "name": "正文和图床URL保持原字节",
+        "passed": true
+      },
+      {
+        "name": "恢复尺寸保留旧画廊配置",
+        "passed": true
+      },
+      {
+        "name": "正文可滚动，取消和卸载释放控件",
+        "passed": true
+      },
+      {
+        "name": "实际发布bundle可在移动环境加载",
+        "passed": true
+      }
+    ]
+  },
+  "tableMerge": {
+    "component": "table-column-resize",
+    "version": "1.0.5",
+    "buildPassed": true,
+    "automatedTests": {
+      "total": 36,
+      "passed": 36
+    },
+    "runtimePlatform": "macOS Obsidian",
+    "checks": {
+      "source_same_clicks": {
+        "selectedCells": 4,
+        "rowSpan": 2,
+        "colSpan": 2,
+        "markdownPreserved": true,
+        "reopenedControls": {
+          "clearVisible": true,
+          "editVisible": true
+        }
+      },
+      "source_blank_drag": {
+        "selectedCells": 4,
+        "rowSpan": 2,
+        "colSpan": 2,
+        "markdownPreserved": true,
+        "reopenedControls": {
+          "clearVisible": true,
+          "editVisible": true
+        }
+      },
+      "preview_same_clicks": {
+        "selectedCells": 4,
+        "rowSpan": 2,
+        "colSpan": 2,
+        "markdownPreserved": true,
+        "reopenedControls": {
+          "clearVisible": true,
+          "editVisible": true
+        }
+      },
+      "preview_blank_drag": {
+        "selectedCells": 4,
+        "rowSpan": 2,
+        "colSpan": 2,
+        "markdownPreserved": true,
+        "reopenedControls": {
+          "clearVisible": true,
+          "editVisible": true
+        }
+      },
+      "redraw_clicks": {
+        "selectedCells": 4,
+        "rowSpan": 2,
+        "colSpan": 2,
+        "markdownPreserved": true,
+        "reopenedControls": {
+          "clearVisible": true,
+          "editVisible": true
+        }
+      }
+    },
+    "originalSameContentMergePreserved": true,
+    "filledCellWithBlankCells": true,
+    "nonTopLeftContentRestored": true
+  }
 }

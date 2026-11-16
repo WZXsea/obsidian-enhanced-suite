@@ -2,6 +2,14 @@ import {build} from 'esbuild';
 import {readFileSync,writeFileSync} from 'node:fs';
 const bundle=await build({entryPoints:['src/main.ts'],bundle:true,external:['obsidian'],format:'cjs',target:'es2022',write:false});
 let original=readFileSync('upstream/main.js','utf8').replace(/^\/\/# sourceMappingURL=.*$/gm,'');
+const copyImageAnchor='                    ImgUtil.copyImage(activeImg.imgViewEl, activeImg.curWidth, activeImg.curHeight);';
+if(!original.includes(copyImageAnchor))throw new Error('Upstream image copy anchor changed');
+original=original.replace(copyImageAnchor,`                    void this.plugin.noteImageStage.copyImage(activeImg.imgViewEl).then(() => {
+                        new obsidian.Notice(t('COPY_IMAGE_SUCCESS'));
+                    }).catch(error => {
+                        new obsidian.Notice(t('COPY_IMAGE_ERROR') + ' ' + (error?.message ?? String(error)));
+                        console.error('Image Toolkit: copy image', error);
+                    });`);
 const previewOpenAnchor='            this.openOitContainerView(matchedImg);';
 const previewReadyAnchor="                        imgCto.imgViewEl.style.setProperty('mix-blend-mode', imgCto.defaultImgStyle.mixBlendMode);";
 const previewClearAnchor="            imgViewEl.hidden = !src && !alt;";

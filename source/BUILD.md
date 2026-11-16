@@ -11,4 +11,6 @@
 | citation-badges | `npm run build` |
 | transparent-outline | `npm run build` |
 
-本次图片功能采用 10 项核心检查，结果见总包 verification.json。各上游许可和署名见对应目录 LICENSE 或 THIRD-PARTY-NOTICES.md。
+本次 Image Toolkit 1.4.19 通过 54 项自动测试与 TypeScript 构建；在 image-toolkit-upgraded/ 执行 `npm test` 可运行回归。macOS 实机复制结果及先前组件的验收记录见总包 verification.json。各上游许可和署名见对应目录 LICENSE 或 THIRD-PARTY-NOTICES.md。
+
+本轮 Table Column Resize 1.0.5 通过 36 项测试，可在 table-column-resize-custom/ 执行 `node --test tests/*.test.cjs` 运行。实机覆盖实时预览与阅读视图的同文字合并、单格文字扩展空格、拖动选区、首尾点击及取消恢复。

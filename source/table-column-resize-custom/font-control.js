@@ -186,10 +186,10 @@ function setupTableFont(plugin, table, fileKey) {
             const owner = plugin.app.workspace.getLeavesOfType('markdown').find(leaf => control.scope && leaf.view.containerEl.contains(control.scope));
             // A focused editor may virtualize the whole table while the dialog
             // owns the pointer. Keep its saved key usable until it is closed.
-            if (menu && control.scope?.isConnected && owner?.view.file?.path === fileKey.split('::')[0]) return;
+            if ((menu || mergeControl.menu) && control.scope?.isConnected && owner?.view.file?.path === fileKey.split('::')[0]) return;
             control.destroy();
           }
-        }, menu ? 1500 : 100);
+        }, menu || mergeControl.menu ? 1500 : 100);
       }
     },
     destroy() {

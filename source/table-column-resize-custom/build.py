@@ -47,7 +47,7 @@ replace_once('    update() {\n      this.instrumentTables();\n    }\n    instrum
 replace_once('    destroy() {\n      this.observer.disconnect();\n    }', '    destroy() {\n      this.observer.disconnect();\n      if (this.frame) this.view.dom.ownerDocument.defaultView.cancelAnimationFrame(this.frame);\n    }')
 js += '\n// Table clipboard support\n' + (root / 'copy-table.js').read_text()
 # The original fingerprint is computed before any control is injected.
-for filename in ['merge-identity.js', 'merge-render.js', 'merge-control.js', 'citation-control.js', 'input-control.js']:
+for filename in ['merge-identity.js', 'merge-render.js', 'merge-gesture.js', 'merge-control.js', 'citation-control.js', 'input-control.js']:
     js += '\n' + (root / filename).read_text()
 js += '\n// Content-aware column sizing\n' + (root / 'auto-fit.js').read_text()
 js += '\n// Whole-table width customization\n' + (root / 'width-control.js').read_text()
@@ -62,7 +62,7 @@ for text, loader, filename in [(js, 'js', 'main.js'), (css, 'css', 'styles.css')
     result = subprocess.run(args, input=text, text=True, capture_output=True, check=True)
     (root / filename).write_text(result.stdout)
 manifest = json.loads((root / 'upstream/manifest.json').read_text())
-manifest['version'] = '1.0.4'
+manifest['version'] = '1.0.5'
 manifest['isDesktopOnly'] = False
 (root / 'manifest.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n')
-print('Built local Table Column Resize 1.0.4 with content-aware sizing')
+print('Built local Table Column Resize 1.0.5 with merge range selection')

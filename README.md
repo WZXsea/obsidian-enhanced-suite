@@ -6,26 +6,30 @@
 
 Obsidian 插件增强套件 · 桌面 / 安卓手机 / 安卓平板
 
-[【整合包·6合1】Obsidian桌面与安卓全部插件-2026-11-13.zip](https://github.com/WZXsea/obsidian-enhanced-suite/releases/download/images-0.1.9-20261113/Obsidian-ALL-6-Plugins-2026-11-13.zip)
+[【整合包·6合1】Obsidian桌面与安卓全部插件-2026-11-16.zip](https://github.com/WZXsea/obsidian-enhanced-suite/releases/download/images-tables-20261116/Obsidian-ALL-6-Plugins-2026-11-16.zip)
 
-[按需下载单个插件](https://github.com/WZXsea/obsidian-enhanced-suite/releases/tag/images-0.1.9-20261113) · [查看全部版本](https://github.com/WZXsea/obsidian-enhanced-suite/releases) · [反馈问题](https://github.com/WZXsea/obsidian-enhanced-suite/issues)
+[按需下载单个插件](https://github.com/WZXsea/obsidian-enhanced-suite/releases/tag/images-tables-20261116) · [查看全部版本](https://github.com/WZXsea/obsidian-enhanced-suite/releases) · [反馈问题](https://github.com/WZXsea/obsidian-enhanced-suite/issues)
 
 找资料、看大图、排画廊、调表格、查引用、读长文。把日常阅读和整理中常用的操作，放到手边。
 
 这套工具由 **6 个独立插件**组成，可以整包下载，再按需要选择启用。桌面保留鼠标与键盘操作，安卓手机和平板提供点按、长按和触摸手势。整合包内的插件同时适用于桌面 Obsidian。
 
-## 0.1.9 图片拖动修复
+## 图片复制与表格合并更新
 
-修复 macOS 实时预览中拖动图片时手柄提前消失、调整中断的问题。图片尺寸变化会触发编辑器自动滚动，修复后这类滚动由拖动流程协调，松手后保存本设备宽度。更新时保留原有 data.json，继续沿用各设备尺寸和画廊设置。
+Image Toolkit **1.4.19** 修复图床图片预览正常、完整图片复制失败的问题。复制结果采用原始分辨率、原始方向与白底 PNG，预览缩放保持独立。
+
+Table Column Resize **1.0.5** 打开合并菜单后即可拖动框选，或依次点击起点与终点。原有相同文字合并继续使用，同时支持将一个已填写格扩展到周围空格；文字位于区域中间或末尾时也会显示。取消合并或展开编辑后，内容回到原格，Markdown 原文保持原样。
+
+两项更新均经过自动回归、构建和 macOS Obsidian 实机核验。更新时保留原有 `data.json`，重新加载对应插件即可。
 
 ## 六个独立插件，按需启用
 
 | 插件 | 能帮你做什么 | 桌面与安卓的使用方式 | 当前版本 |
 | --- | --- | --- | --- |
 | [Floating Search · 浮动搜索](plugins/float-search/README.md) | 搜文件、标题、别名和正文，展开结果并预览命中内容 | 桌面浮动搜索与预览；手机点按查阅，平板宽屏并排显示结果和预览 | 4.4.4 |
-| [Image Toolkit · 图片查看](plugins/obsidian-image-toolkit/README.md) | 悬浮缩略图导航、放大查看、旋转与前后切图 | 桌面鼠标查看；安卓点按打开、双指缩放、单指平移 | 1.4.18 |
+| [Image Toolkit · 图片查看](plugins/obsidian-image-toolkit/README.md) | 悬浮缩略图导航、放大查看、旋转与前后切图 | 桌面鼠标查看；安卓点按打开、双指缩放、单指平移 | 1.4.19 |
 | [Image Layouts Enhanced · 图片画廊](plugins/image-layouts-enhanced/README.md) | 正文独立图片居中、拖动调尺寸，组合拼图、瀑布流与主图画廊 | 桌面悬停、手机和平板长按；普通图片尺寸按设备分别保存 | 0.1.9 |
-| [Table Column Resize · 表格增强](plugins/table-column-resize/README.md) | 调列宽、整体宽度与字号，一键紧凑排版、合并显示和复制 | 桌面拖动与菜单操作；安卓提供触摸手柄和点按入口 | 1.0.4 |
+| [Table Column Resize · 表格增强](plugins/table-column-resize/README.md) | 调列宽、整体宽度与字号，一键紧凑排版、合并显示和复制 | 桌面拖动与菜单操作；安卓提供触摸手柄和点按入口 | 1.0.5 |
 | [Citation Badges · 引用徽标](plugins/citation-badges/README.md) | 将相邻脚注聚成引用徽标，就近查看、编辑来源并往返定位 | 桌面悬停或点击；安卓点按查看，切换来源正文的预览与编辑 | 0.3.5 |
 | [Transparent Outline · 透明大纲](plugins/transparent-outline/README.md) | 文章旁的标题导航、折叠和展开层级调节 | 桌面悬停或常开；安卓点按展开，底部快捷条连接搜索、图片和目录 | 0.3.4 |
 
@@ -61,7 +65,7 @@ Floating Search 把文件、标题、别名和正文检索集中到浮动窗口�
 
 1. 下载整合包并解压，在包内 `plugins/` 中选择需要的插件文件夹；也可以直接下载对应单插件 ZIP。
 2. 关闭 Obsidian，将插件文件夹合并复制到知识库的 `.obsidian/plugins/`，替换同名安装文件，并保留原有 `data.json` 设置文件。安卓文件管理器中可开启“显示隐藏文件”来找到 `.obsidian`。
-3. 启动 Obsidian，在“设置 → 第三方插件”中启用所选插件。更新图片画廊后，将该插件关闭再开启一次，以重新加载代码。
+3. 启动 Obsidian，在“设置 → 第三方插件”中启用所选插件。更新插件后，将对应插件关闭再开启一次，以重新加载代码。
 4. 使用过 `obsidian-image-center` CSS 片段的用户，可在“设置 → 外观 → CSS 代码片段”中停用旧片段，由图片画廊接管正文图片居中。
 
 组合建议：图片较多时一起启用 Image Layouts Enhanced 与 Image Toolkit；长文阅读可搭配 Floating Search、Citation Badges 和 Transparent Outline；表格增强可按需单独使用。

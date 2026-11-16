@@ -43,12 +43,13 @@ function setupTableMerge(plugin, table, fileKey, toolbar) {
     if (!range || range.r1 === range.r2 && range.c1 === range.c2) return false;
     const firstCell = renderer.grid[range.r1]?.[range.c1];
     if (!firstCell) return false;
-    const text = tcrMergeText(firstCell), group = firstCell.parentElement.parentElement;
+    const group = firstCell.parentElement.parentElement, cells = [];
     for (let r = range.r1; r <= range.r2; r++) for (let c = range.c1; c <= range.c2; c++) {
       const cell = renderer.grid[r]?.[c];
-      if (!cell || cell.parentElement.parentElement !== group || tcrMergeText(cell) !== text) return false;
+      if (!cell || cell.parentElement.parentElement !== group) return false;
+      cells.push(cell);
     }
-    return true;
+    return tcrMergeContent(cells).valid;
   };
   const mergeRange = range => {
     if (!validSelection(range)) return;
@@ -71,7 +72,7 @@ function setupTableMerge(plugin, table, fileKey, toolbar) {
       if (!range) return;
       const valid = validSelection(range);
       menu.addItem(item => item.setSection('table').setIcon('combine')
-        .setTitle(valid ? '合并显示' : '合并显示（请选择内容相同的矩形区域）')
+        .setTitle(valid ? '合并显示' : '合并显示（可将相同内容与空格合并）')
         .setDisabled(!valid).onClick(() => mergeRange(range)));
     };
     widget.onContextMenu = patched;
@@ -85,15 +86,22 @@ function setupTableMerge(plugin, table, fileKey, toolbar) {
     for (const row of renderer.grid) for (const cell of row) cell.classList.remove('tcr-merge-selected');
     first = selection = null;
   };
+  const paintSelection = () => {
+    for (const row of renderer.grid) for (const cell of row) cell.classList.remove('tcr-merge-selected');
+    if (selection) {
+      for (let r = selection.r1; r <= selection.r2; r++) for (let c = selection.c1; c <= selection.c2; c++) renderer.grid[r]?.[c]?.classList.add('tcr-merge-selected');
+    } else if (first) renderer.grid[first.r]?.[first.c]?.classList.add('tcr-merge-selected');
+  };
   const update = (message) => {
     if (!menu) return;
     status.textContent = message || (editing ? '原表编辑中，内容修改后可返回合并显示。' : `${renderer.ranges.length} 个合并区域`);
-    mergeButton.disabled = !selection;
+    mergeButton.disabled = !validSelection(selection);
     pickButton.textContent = picking ? '重新选择区域' : '选择合并区域';
     editButton.textContent = editing ? '返回合并显示' : '编辑原表';
     menu.querySelector('.tcr-merge-clear').disabled = !renderer.ranges.length;
   };
   const endSelection = () => {
+    pointerSelection.reset();
     picking = false;
     table.classList.remove('tcr-merge-picking');
     menu?.classList.remove('is-picking');
@@ -111,6 +119,9 @@ function setupTableMerge(plugin, table, fileKey, toolbar) {
     win.visualViewport?.removeEventListener('resize', position);
     win.visualViewport?.removeEventListener('scroll', position);
     doc.removeEventListener('scroll', position, true);
+    for (const type of pointerEvents) doc.removeEventListener(type, pointerSelection.handle, true);
+    for (const type of ['mousedown', 'click']) doc.removeEventListener(type, stopNativeSelection, true);
+    win.removeEventListener('blur', pointerSelection.reset);
     button.setAttribute('aria-expanded', 'false');
     if (plugin._activeMergeMenu === control) plugin._activeMergeMenu = null;
   };
@@ -137,6 +148,48 @@ function setupTableMerge(plugin, table, fileKey, toolbar) {
       });
     } else tcrPositionMenu(menu, rect, win);
   };
+  const pointAt = event => {
+    const target = event.type === 'pointerdown' ? event.target : doc.elementFromPoint?.(event.clientX, event.clientY) || event.target;
+    const cell = target.closest?.('td, th');
+    if (!cell || cell.closest('table') !== table) return null;
+    for (let r = 0; r < renderer.grid.length; r++) {
+      const c = renderer.grid[r].indexOf(cell);
+      if (c >= 0) return {r, c};
+    }
+    return null;
+  };
+  const extendSelection = point => {
+    if (!first) return;
+    const range = {r1: Math.min(first.r, point.r), c1: Math.min(first.c, point.c), r2: Math.max(first.r, point.r), c2: Math.max(first.c, point.c)};
+    selection = range;
+    paintSelection();
+    update(validSelection(range)
+      ? `已选择 ${range.r2 - range.r1 + 1} 行 × ${range.c2 - range.c1 + 1} 列，可合并显示。`
+      : '已高亮选区：同一表头或正文内，相同内容可与空格合并；多种文字分别选择。');
+  };
+  const selectPoint = point => {
+    if (!first || selection) {
+      clearSelection();
+      first = point;
+      paintSelection();
+      update('已选择起点，可拖动到终点，或点击终点单元格。');
+    } else extendSelection(point);
+  };
+  const pointerSelection = tcrMergePointerSelection({enabled: () => picking, pointAt, start: selectPoint, extend: extendSelection, tap: selectPoint});
+  const stopNativeSelection = event => {
+    if (picking && table.contains(event.target)) { event.preventDefault(); event.stopImmediatePropagation(); }
+  };
+  const pointerEvents = ['pointerdown', 'pointermove', 'pointerup', 'pointercancel'];
+  const beginSelection = () => {
+    clearSelection();
+    pointerSelection.reset();
+    picking = true;
+    menu.classList.add('is-picking');
+    renderer.suspend();
+    table.classList.add('tcr-merge-picking');
+    update('请拖动框选，或依次点击区域的起点和终点。');
+    position();
+  };
   const select = event => {
     if (!picking && event.target.closest('.tcr-handle, a, button, input, textarea, select, [role=button], .citation-badge, .footnote-ref')) return;
     const cell = event.target.closest('td, th');
@@ -156,33 +209,9 @@ function setupTableMerge(plugin, table, fileKey, toolbar) {
     if (!cell || cell.closest('table') !== table) return;
     event.preventDefault();
     event.stopImmediatePropagation();
-    let point;
-    renderer.grid.some((row, r) => {
-      const c = row.indexOf(cell);
-      if (c < 0) return false;
-      point = { r, c };
-      return true;
-    });
+    const point = pointAt(event);
     if (!point) return;
-    if (!first || selection) {
-      clearSelection();
-      first = point;
-      cell.classList.add('tcr-merge-selected');
-      update('已选择起点，请点击区域的终点单元格。');
-      return;
-    }
-    const range = { r1: Math.min(first.r, point.r), c1: Math.min(first.c, point.c), r2: Math.max(first.r, point.r), c2: Math.max(first.c, point.c) };
-    const cells = [];
-    for (let r = range.r1; r <= range.r2; r++) for (let c = range.c1; c <= range.c2; c++) cells.push(renderer.grid[r]?.[c]);
-    const text = tcrMergeText(cell);
-    if (cells.length < 2 || cells.some(item => !item || item.parentElement.parentElement !== cell.parentElement.parentElement || tcrMergeText(item) !== text)) {
-      update('请选择同一表头或正文区域内，内容相同的相邻单元格。');
-      return;
-    }
-    for (const row of renderer.grid) for (const item of row) item.classList.remove('tcr-merge-selected');
-    cells.forEach(item => item.classList.add('tcr-merge-selected'));
-    selection = range;
-    update(`已选择 ${range.r2 - range.r1 + 1} 行 × ${range.c2 - range.c1 + 1} 列，可合并显示。`);
+    selectPoint(point);
   };
   const open = () => {
     const selected = nativeSelection();
@@ -195,21 +224,13 @@ function setupTableMerge(plugin, table, fileKey, toolbar) {
     menu.setAttribute('role', 'dialog');
     menu.setAttribute('aria-label', '合并单元格显示');
     menu.setAttribute('contenteditable', 'false');
-    menu.innerHTML = '<div class="tcr-font-heading">合并显示</div><p class="tcr-merge-help">选择起点和终点，将内容相同的相邻单元格融合显示。原文保留各格内容。</p><p class="tcr-merge-status" role="status"></p><button type="button" class="tcr-font-reset tcr-merge-pick">选择合并区域</button><button type="button" class="tcr-font-reset tcr-merge-apply">合并显示</button><button type="button" class="tcr-font-reset tcr-merge-edit">编辑原表</button><button type="button" class="tcr-font-reset tcr-merge-clear">取消全部合并</button>';
+    menu.innerHTML = '<div class="tcr-font-heading">合并显示</div><p class="tcr-merge-help">拖动框选或依次点击起点和终点，将已填写格扩展到空格；相同内容也可合并显示。原文保留各格内容。</p><p class="tcr-merge-status" role="status"></p><button type="button" class="tcr-font-reset tcr-merge-pick">选择合并区域</button><button type="button" class="tcr-font-reset tcr-merge-apply">合并显示</button><button type="button" class="tcr-font-reset tcr-merge-edit">编辑原表</button><button type="button" class="tcr-font-reset tcr-merge-clear">取消全部合并</button>';
     status = menu.querySelector('.tcr-merge-status');
     pickButton = menu.querySelector('.tcr-merge-pick');
     mergeButton = menu.querySelector('.tcr-merge-apply');
     editButton = menu.querySelector('.tcr-merge-edit');
     editButton.hidden = !table.closest('.markdown-source-view');
-    pickButton.addEventListener('click', () => {
-      clearSelection();
-      picking = true;
-      menu.classList.add('is-picking');
-      renderer.suspend();
-      table.classList.add('tcr-merge-picking');
-      update('请点击区域的起点单元格。');
-      position();
-    });
+    pickButton.addEventListener('click', beginSelection);
     mergeButton.addEventListener('click', () => {
       if (!selection) return;
       mergeRange(selection);
@@ -236,15 +257,19 @@ function setupTableMerge(plugin, table, fileKey, toolbar) {
     win.visualViewport?.addEventListener('resize', position);
     win.visualViewport?.addEventListener('scroll', position);
     doc.addEventListener('scroll', position, true);
+    for (const type of pointerEvents) doc.addEventListener(type, pointerSelection.handle, true);
+    for (const type of ['mousedown', 'click']) doc.addEventListener(type, stopNativeSelection, true);
+    win.addEventListener('blur', pointerSelection.reset);
+    beginSelection();
     if (selected) {
-      renderer.suspend();
+      first = {r: selected.r1, c: selected.c1};
+      selection = selected;
+      paintSelection();
       if (validSelection(selected)) {
-        selection = selected;
-        for (let r = selected.r1; r <= selected.r2; r++) for (let c = selected.c1; c <= selected.c2; c++) renderer.grid[r][c].classList.add('tcr-merge-selected');
         pickButton.hidden = true;
         update(`已读取选区：${selected.r2 - selected.r1 + 1} 行 × ${selected.c2 - selected.c1 + 1} 列，可直接合并显示。`);
-      } else update('已读取选区，请选择内容相同的矩形区域进行合并。');
-    } else update('先在表格中选中待合并的格子，或在此选择区域。');
+      } else update('已高亮原选区，相同内容可与空格合并；多种文字分别选择。');
+    }
     position();
     if (!win.matchMedia('(prefers-reduced-motion: reduce)').matches) menu.animate([
       { opacity: 0, transform: 'scale(0.92) translateY(-4px)' },
@@ -258,25 +283,34 @@ function setupTableMerge(plugin, table, fileKey, toolbar) {
     else open();
   };
   button.addEventListener('click', click);
-  const gesture = tcrTapSelection(select);
+  const nativeGesture = tcrTapSelection(select);
+  const gesture = event => { if (!picking) nativeGesture(event); };
   const tableEvents = ['pointerdown', 'pointermove', 'pointerup', 'pointercancel'];
   const bindSelection = target => { for (const type of tableEvents) target.addEventListener(type, gesture, true); };
   const unbindSelection = target => { for (const type of tableEvents) target.removeEventListener(type, gesture, true); };
   bindSelection(table);
   const control = {
     button, renderer, close,
+    get menu() { return menu; },
     rebind(nextTable) {
+      const nextKey = tcrMergeIdentity(plugin, nextTable, fileKey);
       unhookContext();
-      endSelection();
-      table.classList.remove('tcr-merge-editing');
+      pointerSelection.reset();
+      for (const row of renderer.grid) for (const cell of row) cell.classList.remove('tcr-merge-selected');
+      if (nextKey !== renderer.key) first = selection = null;
+      table.classList.remove('tcr-merge-editing', 'tcr-merge-picking');
       unbindSelection(table);
       plugin._mergeTables.delete(table);
       table = nextTable;
-      renderer.rebind(nextTable, tcrMergeIdentity(plugin, nextTable, fileKey));
+      renderer.rebind(nextTable, nextKey);
       plugin._mergeTables.set(nextTable, renderer);
       bindSelection(table);
       table.classList.toggle('tcr-merge-editing', editing);
-      if (editing) renderer.suspend();
+      table.classList.toggle('tcr-merge-picking', picking);
+      if (editing || picking) renderer.suspend();
+      if (first && !renderer.grid[first.r]?.[first.c]) first = selection = null;
+      if (selection && !renderer.grid[selection.r2]?.[selection.c2]) selection = null;
+      paintSelection();
       hookContext();
       update();
       position();
