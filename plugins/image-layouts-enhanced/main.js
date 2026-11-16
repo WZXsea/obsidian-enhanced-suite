@@ -3709,6 +3709,100 @@ function renameImageSettings(settings, oldPath, newPath) {
   return result;
 }
 
+// src/gallery-height.ts
+var widthKey = (width) => Math.round(width * 2) / 2;
+var GalleryHeightCache = class _GalleryHeightCache {
+  entries = [];
+  path = "";
+  viewport = { width: 0 };
+  metrics = /* @__PURE__ */ new WeakMap();
+  get width() {
+    return this.viewport.width;
+  }
+  set width(value) {
+    this.viewport.width = value;
+  }
+  fork(path, targets, changes) {
+    const next = new _GalleryHeightCache();
+    const previous = this.path === path ? this.entries : [];
+    const available = new Map(previous.map((entry) => [
+      JSON.stringify([changes?.mapPos(entry.from, 1) ?? entry.from, changes?.mapPos(entry.to, -1) ?? entry.to, entry.signature]),
+      entry
+    ]));
+    if (this.path === path) next.viewport = this.viewport;
+    next.path = path;
+    next.entries = targets.map((target) => {
+      const key = JSON.stringify([target.from, target.to, target.signature]);
+      const previousEntry = available.get(key);
+      available.delete(key);
+      const metrics = previousEntry ? this.metrics.get(previousEntry) : { width: 0, height: -1, sizes: /* @__PURE__ */ new Map() };
+      const entry = { ...target, get width() {
+        return metrics.width;
+      }, get height() {
+        return metrics.height;
+      }, get sizes() {
+        return metrics.sizes;
+      } };
+      next.metrics.set(entry, metrics);
+      return entry;
+    });
+    return next;
+  }
+  reconcile(path, targets, changes) {
+    const next = this.fork(path, targets, changes);
+    this.entries = next.entries;
+    this.path = next.path;
+    this.viewport = next.viewport;
+    this.metrics = next.metrics;
+  }
+  estimate(entry) {
+    return entry.sizes.get(widthKey(this.width)) ?? entry.height;
+  }
+  record(entry, width, height) {
+    if (!this.entries.includes(entry) || !Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return false;
+    const key = widthKey(width), previous = entry.sizes.get(key);
+    const changed = this.width !== key || previous === void 0 || Math.abs(previous - height) > 0.1;
+    const metrics = this.metrics.get(entry);
+    this.width = key;
+    metrics.width = width;
+    metrics.height = height;
+    entry.sizes.set(key, height);
+    if (entry.sizes.size > 4) entry.sizes.delete(entry.sizes.keys().next().value);
+    return changed;
+  }
+};
+function observeGalleryHeight(view, host, cache, entry) {
+  let disposed = false;
+  const sample = () => {
+    if (disposed || !host.isConnected) return;
+    const rect = host.getBoundingClientRect();
+    return { width: rect.width / (view.scaleX || 1), height: rect.height / (view.scaleY || 1) };
+  };
+  const schedule = () => {
+    if (disposed) return;
+    view.requestMeasure({ key: host, read: sample, write: (size) => {
+      if (!disposed && size && cache.record(entry, size.width, size.height)) view.requestMeasure();
+    } });
+  };
+  const Resize = host.ownerDocument.defaultView?.ResizeObserver;
+  const observer = Resize ? new Resize(schedule) : void 0;
+  observer?.observe(host);
+  if (!observer) {
+    host.addEventListener("load", schedule, true);
+    host.addEventListener("error", schedule, true);
+  }
+  schedule();
+  return () => {
+    if (disposed) return;
+    const size = sample();
+    if (size) cache.record(entry, size.width, size.height);
+    disposed = true;
+    observer?.disconnect();
+    host.removeEventListener("load", schedule, true);
+    host.removeEventListener("error", schedule, true);
+  };
+}
+
 // src/main.ts
 var DEFAULT_SETTINGS = { layout: "g", fit: "contain", height: 320, gap: 8, radius: 8, centerImages: true };
 var lineOffset = (source, line) => {
@@ -3745,17 +3839,23 @@ var GalleryChild = class extends import_obsidian3.MarkdownRenderChild {
   }
 };
 var widgetChildren = /* @__PURE__ */ new WeakMap();
+var widgetHeightCleanup = /* @__PURE__ */ new WeakMap();
 var GalleryWidget = class extends import_view.WidgetType {
-  constructor(plugin, group, path, source, revision = plugin.configurationRevision) {
+  constructor(plugin, group, path, source, heights, height, revision = plugin.configurationRevision) {
     super();
     this.plugin = plugin;
     this.group = group;
     this.path = path;
     this.source = source;
+    this.heights = heights;
+    this.height = height;
     this.revision = revision;
   }
   eq(other) {
     return this.revision === other.revision && this.path === other.path && this.group.from === other.group.from && this.group.raw === other.group.raw && this.source === other.source;
+  }
+  get estimatedHeight() {
+    return this.heights.estimate(this.height);
   }
   toDOM(view) {
     const host = view.dom.ownerDocument.createElement("div");
@@ -3765,22 +3865,52 @@ var GalleryWidget = class extends import_view.WidgetType {
     const child = new GalleryChild(host, this.plugin, this.group, this.path, this.source);
     child.load();
     widgetChildren.set(host, child);
+    widgetHeightCleanup.set(host, observeGalleryHeight(view, host, this.heights, this.height));
     return host;
   }
   ignoreEvent() {
     return true;
   }
   destroy(host) {
+    widgetHeightCleanup.get(host)?.();
+    widgetHeightCleanup.delete(host);
     widgetChildren.get(host)?.unload();
     widgetChildren.delete(host);
   }
 };
-function decorations(state, plugin, groups) {
+function decorations(state, plugin, groups, heights) {
   if (state.field(import_obsidian3.editorLivePreviewField, false) !== true) return import_view.Decoration.none;
   const path = state.field(import_obsidian3.editorInfoField, false)?.file?.path ?? "";
   const source = state.doc.toString();
-  const ranges = groups.filter((group) => !state.selection.ranges.some((selection) => selection.empty ? selection.from >= group.from && selection.from < group.to : selection.from < group.to && selection.to > group.from)).map((group) => import_view.Decoration.replace({ widget: new GalleryWidget(plugin, group, path, source), block: true }).range(group.from, group.to));
+  const ranges = groups.flatMap((group, index) => state.selection.ranges.some((selection) => selection.empty ? selection.from >= group.from && selection.from < group.to : selection.from < group.to && selection.to > group.from) ? [] : [
+    import_view.Decoration.replace({ widget: new GalleryWidget(plugin, group, path, source, heights, heights.entries[index]), block: true }).range(group.from, group.to)
+  ]);
   return import_view.Decoration.set(ranges, true);
+}
+function createGalleryField(plugin) {
+  const sync = (state, groups, heights, changes) => {
+    const path = state.field(import_obsidian3.editorInfoField, false)?.file?.path ?? "", source = state.doc.toString();
+    const targets = groups.map((group) => {
+      const options = getEffectiveOptions(group, path, plugin.groupSettings);
+      const images = plugin.images({ ...group, options }, path, source).map(({ src, target, alt, missing }) => ({ src, target, alt, missing }));
+      return { from: group.from, to: group.to, signature: JSON.stringify([group.raw, options, images, plugin.configurationRevision]) };
+    });
+    return { path, heights: heights.fork(path, targets, changes) };
+  };
+  return import_state.StateField.define({
+    create: (state) => {
+      const groups = parseGroups(state.doc.toString()), heights = new GalleryHeightCache();
+      const value = sync(state, groups, heights);
+      return { groups, ...value, revision: plugin.configurationRevision, decorations: decorations(state, plugin, groups, value.heights) };
+    },
+    update: (previous, transaction) => {
+      const groups = transaction.docChanged ? parseGroups(transaction.state.doc.toString()) : previous.groups;
+      const path = transaction.state.field(import_obsidian3.editorInfoField, false)?.file?.path ?? "";
+      const heights = transaction.docChanged || path !== previous.path || plugin.configurationRevision !== previous.revision ? sync(transaction.state, groups, previous.heights, transaction.docChanged ? transaction.changes : void 0).heights : previous.heights;
+      return { groups, heights, path, revision: plugin.configurationRevision, decorations: decorations(transaction.state, plugin, groups, heights) };
+    },
+    provide: (field) => import_view.EditorView.decorations.from(field, (value) => value.decorations)
+  });
 }
 var ImageLayoutsEnhanced = class extends import_obsidian3.Plugin {
   settings = { ...DEFAULT_SETTINGS };
@@ -3828,17 +3958,7 @@ var ImageLayoutsEnhanced = class extends import_obsidian3.Plugin {
       new import_obsidian3.Notice("\u753B\u5ECA\u914D\u7F6E\u8BFB\u53D6\u9047\u5230\u95EE\u9898\uFF0C\u5F53\u524D\u4F7F\u7528\u9ED8\u8BA4\u663E\u793A\u53C2\u6570");
     }
     this.addSettingTab(new GallerySettings(this.app, this));
-    this.registerEditorExtension(import_state.StateField.define({
-      create: (state) => {
-        const groups = parseGroups(state.doc.toString());
-        return { groups, decorations: decorations(state, this, groups) };
-      },
-      update: (previous, transaction) => {
-        const groups = transaction.docChanged ? parseGroups(transaction.state.doc.toString()) : previous.groups;
-        return { groups, decorations: decorations(transaction.state, this, groups) };
-      },
-      provide: (field) => import_view.EditorView.decorations.from(field, (value) => value.decorations)
-    }));
+    this.registerEditorExtension(createGalleryField(this));
     this.registerMarkdownPostProcessor((el, ctx) => {
       this.annotateImages(el, ctx);
       return this.reading(el, ctx);

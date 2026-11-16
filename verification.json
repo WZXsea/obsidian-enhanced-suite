@@ -171,5 +171,36 @@
     "belowGap": 6,
     "withinViewport": true,
     "sourcePreserved": true
+  },
+  "galleryHeight": {
+    "version": "0.1.10",
+    "automatedTests": {
+      "galleryHeight": 12,
+      "imageEssentials": 10,
+      "allPassed": true
+    },
+    "buildPassed": true,
+    "runtimePlatform": "macOS Obsidian",
+    "baselineDownstreamShift": -542.296875,
+    "measuredGalleryHeight": 567.796875,
+    "afterEnterDownstreamShifts": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "beforeScrollTop": 5013,
+    "afterEnterScrollTops": [
+      5013,
+      5013,
+      5013
+    ],
+    "beforeCaretTop": 433.3203125,
+    "afterEnterCaretTops": [
+      460.09375,
+      458.8203125,
+      484.3203125
+    ],
+    "reentryHeight": 567.796875,
+    "activeUserPanePreserved": true
   }
 }

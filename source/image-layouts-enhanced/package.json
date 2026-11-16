@@ -1,11 +1,12 @@
 {
   "name": "image-layouts-enhanced",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "private": true,
   "type": "module",
   "scripts": {
     "build": "tsc --noEmit && node esbuild.config.mjs",
-    "test": "node tests/image-essentials.mjs"
+    "test": "node tests/image-essentials.mjs",
+    "test:gallery-height": "node --test tests/gallery-height.test.mjs"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

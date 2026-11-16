@@ -6,13 +6,19 @@
 
 Obsidian 插件增强套件 · 桌面 / 安卓手机 / 安卓平板
 
-[【整合包·6合1】Obsidian桌面与安卓全部插件-2026-11-16.zip](https://github.com/WZXsea/obsidian-enhanced-suite/releases/download/table-menu-1.0.6-20261116/Obsidian-ALL-6-Plugins-2026-11-16.zip)
+[【整合包·6合1】Obsidian桌面与安卓全部插件-2026-11-16.zip](https://github.com/WZXsea/obsidian-enhanced-suite/releases/download/gallery-height-0.1.10-20261116/Obsidian-ALL-6-Plugins-2026-11-16.zip)
 
-[按需下载单个插件](https://github.com/WZXsea/obsidian-enhanced-suite/releases/tag/table-menu-1.0.6-20261116) · [查看全部版本](https://github.com/WZXsea/obsidian-enhanced-suite/releases) · [反馈问题](https://github.com/WZXsea/obsidian-enhanced-suite/issues)
+[按需下载单个插件](https://github.com/WZXsea/obsidian-enhanced-suite/releases/tag/gallery-height-0.1.10-20261116) · [查看全部版本](https://github.com/WZXsea/obsidian-enhanced-suite/releases) · [反馈问题](https://github.com/WZXsea/obsidian-enhanced-suite/issues)
 
 找资料、看大图、排画廊、调表格、查引用、读长文。把日常阅读和整理中常用的操作，放到手边。
 
 这套工具由 **6 个独立插件**组成，可以整包下载，再按需要选择启用。桌面保留鼠标与键盘操作，安卓手机和平板提供点按、长按和触摸手势。整合包内的插件同时适用于桌面 Obsidian。
+
+## 0.1.10 回车滚动稳定性
+
+修复在图片组后方编辑、回车时，光标行突然跳到页面顶部的问题。图库在实时预览中保留实测高度，离屏回收与正文编辑后继续提供连续的高度估算；图片、引用、布局和视图宽度变化时重新测量。
+
+12 项图库高度回归、原有 10 项图片功能检查与构建通过。macOS Obsidian 同场景实测连续三次回车，滚动位置与下游表格位置保持稳定，光标按正常换行移动。
 
 ## 1.0.6 合并菜单定位
 
@@ -32,7 +38,7 @@ Table Column Resize **1.0.5** 打开合并菜单后即可拖动框选，或依�
 | --- | --- | --- | --- |
 | [Floating Search · 浮动搜索](plugins/float-search/README.md) | 搜文件、标题、别名和正文，展开结果并预览命中内容 | 桌面浮动搜索与预览；手机点按查阅，平板宽屏并排显示结果和预览 | 4.4.4 |
 | [Image Toolkit · 图片查看](plugins/obsidian-image-toolkit/README.md) | 悬浮缩略图导航、放大查看、旋转与前后切图 | 桌面鼠标查看；安卓点按打开、双指缩放、单指平移 | 1.4.19 |
-| [Image Layouts Enhanced · 图片画廊](plugins/image-layouts-enhanced/README.md) | 正文独立图片居中、拖动调尺寸，组合拼图、瀑布流与主图画廊 | 桌面悬停、手机和平板长按；普通图片尺寸按设备分别保存 | 0.1.9 |
+| [Image Layouts Enhanced · 图片画廊](plugins/image-layouts-enhanced/README.md) | 正文独立图片居中、拖动调尺寸，组合拼图、瀑布流与主图画廊 | 桌面悬停、手机和平板长按；普通图片尺寸按设备分别保存 | 0.1.10 |
 | [Table Column Resize · 表格增强](plugins/table-column-resize/README.md) | 调列宽、整体宽度与字号，一键紧凑排版、合并显示和复制 | 桌面拖动与菜单操作；安卓提供触摸手柄和点按入口 | 1.0.6 |
 | [Citation Badges · 引用徽标](plugins/citation-badges/README.md) | 将相邻脚注聚成引用徽标，就近查看、编辑来源并往返定位 | 桌面悬停或点击；安卓点按查看，切换来源正文的预览与编辑 | 0.3.5 |
 | [Transparent Outline · 透明大纲](plugins/transparent-outline/README.md) | 文章旁的标题导航、折叠和展开层级调节 | 桌面悬停或常开；安卓点按展开，底部快捷条连接搜索、图片和目录 | 0.3.4 |

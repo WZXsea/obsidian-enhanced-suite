@@ -23,6 +23,7 @@ import {GroupSettings,groupKey,getEffectiveOptions,getStoredOptions,renameGroupS
 import {isStandaloneImage} from './image-size';
 import {ImagePresentation} from './image-presentation';
 import {getImageWidth,setImageWidth,renameImageSettings,type ImageSettings} from './image-settings';
+import {GalleryHeightCache,observeGalleryHeight,type GalleryHeightEntry} from './gallery-height';
 
 interface Settings {layout:Layout; fit:GalleryOptions['fit']; height:number; gap:number; radius:number;centerImages:boolean}
 const DEFAULT_SETTINGS:Settings={layout:'g',fit:'contain',height:320,gap:8,radius:8,centerImages:true};
@@ -43,26 +44,57 @@ class GalleryChild extends MarkdownRenderChild {
 }
 
 const widgetChildren=new WeakMap<HTMLElement,GalleryChild>();
+const widgetHeightCleanup=new WeakMap<HTMLElement,()=>void>();
 class GalleryWidget extends WidgetType {
-  constructor(private plugin:ImageLayoutsEnhanced,private group:GalleryGroup,private path:string,private source:string,private revision=plugin.configurationRevision){super();}
+  constructor(private plugin:ImageLayoutsEnhanced,private group:GalleryGroup,private path:string,private source:string,private heights:GalleryHeightCache,private height:GalleryHeightEntry,private revision=plugin.configurationRevision){super();}
   eq(other:GalleryWidget){return this.revision===other.revision&&this.path===other.path&&this.group.from===other.group.from&&this.group.raw===other.group.raw&&this.source===other.source;}
+  get estimatedHeight(){return this.heights.estimate(this.height);}
   toDOM(view:EditorView){
     const host=view.dom.ownerDocument.createElement('div');host.className='ilg-host ilg-live';host.contentEditable='false';
     host.dataset.ilgGroupId=this.group.options.id;
     const child=new GalleryChild(host,this.plugin,this.group,this.path,this.source);child.load();widgetChildren.set(host,child);
+    widgetHeightCleanup.set(host,observeGalleryHeight(view,host,this.heights,this.height));
     return host;
   }
   ignoreEvent(){return true;}
-  destroy(host:HTMLElement){widgetChildren.get(host)?.unload();widgetChildren.delete(host);}
+  destroy(host:HTMLElement){widgetHeightCleanup.get(host)?.();widgetHeightCleanup.delete(host);widgetChildren.get(host)?.unload();widgetChildren.delete(host);}
 }
 
-function decorations(state:EditorState,plugin:ImageLayoutsEnhanced,groups:GalleryGroup[]):DecorationSet{
+function decorations(state:EditorState,plugin:ImageLayoutsEnhanced,groups:GalleryGroup[],heights:GalleryHeightCache):DecorationSet{
   if(state.field(editorLivePreviewField,false)!==true)return Decoration.none;
   const path=state.field(editorInfoField,false)?.file?.path??'';
   const source=state.doc.toString();
-  const ranges=groups.filter(group=>!state.selection.ranges.some(selection=>selection.empty?selection.from>=group.from&&selection.from<group.to:selection.from<group.to&&selection.to>group.from)).map(group=>
-    Decoration.replace({widget:new GalleryWidget(plugin,group,path,source),block:true}).range(group.from,group.to));
+  const ranges=groups.flatMap((group,index)=>state.selection.ranges.some(selection=>selection.empty?selection.from>=group.from&&selection.from<group.to:selection.from<group.to&&selection.to>group.from)?[]:[
+    Decoration.replace({widget:new GalleryWidget(plugin,group,path,source,heights,heights.entries[index]),block:true}).range(group.from,group.to)]);
   return Decoration.set(ranges,true);
+}
+
+function createGalleryField(plugin:ImageLayoutsEnhanced){
+  type Value={groups:GalleryGroup[];decorations:DecorationSet;heights:GalleryHeightCache;path:string;revision:number};
+  const sync=(state:EditorState,groups:GalleryGroup[],heights:GalleryHeightCache,changes?:Parameters<GalleryHeightCache['reconcile']>[2])=>{
+    const path=state.field(editorInfoField,false)?.file?.path??'',source=state.doc.toString();
+    const targets=groups.map(group=>{
+      const options=getEffectiveOptions(group,path,plugin.groupSettings);
+      const images=plugin.images({...group,options},path,source).map(({src,target,alt,missing})=>({src,target,alt,missing}));
+      return {from:group.from,to:group.to,signature:JSON.stringify([group.raw,options,images,plugin.configurationRevision])};
+    });
+    return {path,heights:heights.fork(path,targets,changes)};
+  };
+  return StateField.define<Value>({
+    create:state=>{
+      const groups=parseGroups(state.doc.toString()),heights=new GalleryHeightCache();
+      const value=sync(state,groups,heights);
+      return {groups,...value,revision:plugin.configurationRevision,decorations:decorations(state,plugin,groups,value.heights)};
+    },
+    update:(previous,transaction)=>{
+      const groups=transaction.docChanged?parseGroups(transaction.state.doc.toString()):previous.groups;
+      const path=transaction.state.field(editorInfoField,false)?.file?.path??'';
+      const heights=transaction.docChanged||path!==previous.path||plugin.configurationRevision!==previous.revision
+        ?sync(transaction.state,groups,previous.heights,transaction.docChanged?transaction.changes:undefined).heights:previous.heights;
+      return {groups,heights,path,revision:plugin.configurationRevision,decorations:decorations(transaction.state,plugin,groups,heights)};
+    },
+    provide:field=>EditorView.decorations.from(field,value=>value.decorations),
+  });
 }
 
 export default class ImageLayoutsEnhanced extends Plugin {
@@ -106,11 +138,7 @@ export default class ImageLayoutsEnhanced extends Plugin {
       if(saved?.imageSettings&&typeof saved.imageSettings==='object'&&!Array.isArray(saved.imageSettings))this.imageSettings={...saved.imageSettings};
     }catch(error){console.error('Image Layouts Enhanced: configuration read',error);new Notice('画廊配置读取遇到问题，当前使用默认显示参数');}
     this.addSettingTab(new GallerySettings(this.app,this));
-    this.registerEditorExtension(StateField.define<{groups:GalleryGroup[];decorations:DecorationSet}>({
-      create:state=>{const groups=parseGroups(state.doc.toString());return{groups,decorations:decorations(state,this,groups)};},
-      update:(previous,transaction)=>{const groups=transaction.docChanged?parseGroups(transaction.state.doc.toString()):previous.groups;return{groups,decorations:decorations(transaction.state,this,groups)};},
-      provide:field=>EditorView.decorations.from(field,value=>value.decorations),
-    }));
+    this.registerEditorExtension(createGalleryField(this));
     this.registerMarkdownPostProcessor((el,ctx)=>{this.annotateImages(el,ctx);return this.reading(el,ctx);});
     this.installImageControls();
     this.registerEvent(this.app.workspace.on('layout-change',()=>this.installImageControls()));
