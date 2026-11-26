@@ -5,12 +5,11 @@ import {createRequire} from 'node:module';
 import {runInNewContext} from 'node:vm';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
-import os from 'node:os';
 import {build} from 'esbuild';
 
 const project=fileURLToPath(new URL('../',import.meta.url));
 const require=createRequire(import.meta.url);
-const {chromium}=require(path.join(os.homedir(),'.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'));
+const {chromium}=require(process.env.ILG_PLAYWRIGHT_PATH || 'playwright');
 const tools=await build({stdin:{contents:`export {ImageControls} from './src/image-controls'; export {ImagePresentation} from './src/image-presentation'; export {getImageWidth} from './src/image-settings'; export {extractImages} from './src/images';`,resolveDir:project},bundle:true,format:'iife',globalName:'NativeControls',write:false,logLevel:'silent'});
 const toolbox={crypto:webcrypto};runInNewContext(tools.outputFiles[0].text,toolbox);
 const {extractImages,getImageWidth}=toolbox.NativeControls;
@@ -48,7 +47,7 @@ function instance(device){
  instances.push(item);return item;
 }
 const width=(device,index)=>getImageWidth(store.value.imageSettings,device,'note.md',source,refs[index]);
-const browser=await chromium.launch({headless:true,executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'});
+const browser=await chromium.launch({headless:true,executablePath:process.env.ILG_CHROMIUM_EXECUTABLE});
 try{
  // 保留平板触摸流程；鼠标拖动单独使用实时预览结构。
  const page=await browser.newPage({viewport:{width:1024,height:768},isMobile:true,hasTouch:true});
@@ -150,5 +149,7 @@ try{
  passed('实际发布bundle可在移动环境加载');
  await client.detach();
 }finally{await browser.close();}
-const date=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-await writeFile(path.join(project,'..','qa','image-native-controls-20261112','essentials-results.json'),JSON.stringify({date,version:manifest.version,total:10,checks,failures:[]},null,2)+'\n');
+if(process.env.ILG_TEST_REPORT){
+ const date=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+ await writeFile(process.env.ILG_TEST_REPORT,JSON.stringify({date,version:manifest.version,total:checks.length,checks,failures:[]},null,2)+'\n');
+}

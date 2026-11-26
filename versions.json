@@ -1,6 +1,6 @@
 {
-  "date": "2026-11-16",
-  "tag": "gallery-height-0.1.10-20261116",
+  "date": "2026-11-26",
+  "tag": "gallery-0.1.15-20261126",
   "plugins": [
     {
       "id": "float-search",
@@ -31,14 +31,14 @@
     {
       "id": "image-layouts-enhanced",
       "name": "图片布局与正文图片控制",
-      "version": "0.1.10",
+      "version": "0.1.15",
       "sourceDirectory": "source/image-layouts-enhanced",
       "minAppVersion": "1.8.7",
       "isDesktopOnly": false,
       "files": {
-        "main.js": "44ec4c30f89a668721bea6134cb47433c1748ad0600494cd868e9690aff11a6e",
-        "styles.css": "28eaf4c31a53d558a338ebe75983620ba0e8232cd1495fb36edabbb7f2f6c753",
-        "manifest.json": "7211c376614bcc0c6982d51131ae90f2ca61559f4c590959d17f560fa63abde8"
+        "main.js": "c053fa43ae8fc26ed1e2e61ccfe4e17f6bf3a697a0ca07b2be5cd0a3a21056bc",
+        "styles.css": "04c170b3f7dfacf2e5efb6e4b6db82790f8735925edbfa4c0874d27ac4c89b54",
+        "manifest.json": "69d18e17597423a2d88f869f59978aebc1b77132f663846ac039fbe1f62d90d3"
       }
     },
     {

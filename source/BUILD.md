@@ -17,4 +17,6 @@
 
 Table Column Resize 1.0.6 的菜单定位修复通过 39 项自动回归、构建及 macOS 滚动跟随核验。
 
-Image Layouts Enhanced 0.1.10：`npm run test:gallery-height` 执行 12 项图库高度回归；`npm test` 保留 10 项图片功能检查；`npm run build` 完成 TypeScript 检查及打包。
+Image Layouts Enhanced 0.1.15 使用 `npm run build` 检查 TypeScript 并生成安装文件。完整的 Node 回归需先构建同级 `image-toolkit-upgraded`，再在 `image-layouts-enhanced` 下执行 `node --test tests/*.test.mjs`。
+
+运行画廊的 10 项浏览器功能检查前，在 `source/` 执行 `npm install --no-save --no-package-lock playwright` 和 `npx playwright install chromium`，再进入 `image-layouts-enhanced/` 执行 `npm test`。

@@ -24,10 +24,12 @@ import {isStandaloneImage} from './image-size';
 import {ImagePresentation} from './image-presentation';
 import {getImageWidth,setImageWidth,renameImageSettings,type ImageSettings} from './image-settings';
 import {GalleryHeightCache,observeGalleryHeight,type GalleryHeightEntry} from './gallery-height';
+import {orderImages,moveImageOrder} from './order';
 
 interface Settings {layout:Layout; fit:GalleryOptions['fit']; height:number; gap:number; radius:number;centerImages:boolean}
 const DEFAULT_SETTINGS:Settings={layout:'g',fit:'contain',height:320,gap:8,radius:8,centerImages:true};
 type Edit={from:number;to:number;insert:string};
+type GalleryContext={group:GalleryGroup;path:string;source:string};
 const lineOffset=(source:string,line:number)=>{let pos=0;for(let i=0;i<line;i++){const next=source.indexOf('\n',pos);if(next<0)return source.length;pos=next+1;}return pos;};
 const shortId=()=>crypto.randomUUID().replace(/-/g,'').slice(0,10);
 function minimalHeaderEdit(source:string,group:GalleryGroup,options:Pick<GalleryOptions,'id'|'layout'>):Edit|null{
@@ -38,26 +40,39 @@ function minimalHeaderEdit(source:string,group:GalleryGroup,options:Pick<Gallery
 
 class GalleryChild extends MarkdownRenderChild {
   renderer?:GalleryRenderer;
-  constructor(host:HTMLElement,private plugin:ImageLayoutsEnhanced,private group:GalleryGroup,private path:string,private source:string){super(host);}
-  onload(){this.renderer=this.plugin.mount(this.containerEl,this.group,this.path,this.source,this);}
+  readonly context:GalleryContext;
+  constructor(host:HTMLElement,private plugin:ImageLayoutsEnhanced,group:GalleryGroup,path:string,source:string){super(host);this.context={group,path,source};}
+  onload(){this.renderer=this.plugin.mount(this.containerEl,this.context.group,this.context.path,this.context.source,this,this.context);}
+  update(group:GalleryGroup,path:string,source:string){
+    Object.assign(this.context,{group,path,source});this.plugin.updateMountedContext(this.containerEl,this.context);
+  }
   onunload(){this.renderer?.destroy();this.containerEl.remove();}
 }
 
 const widgetChildren=new WeakMap<HTMLElement,GalleryChild>();
 const widgetHeightCleanup=new WeakMap<HTMLElement,()=>void>();
+const widgetSignatures=new WeakMap<HTMLElement,string>();
 class GalleryWidget extends WidgetType {
   constructor(private plugin:ImageLayoutsEnhanced,private group:GalleryGroup,private path:string,private source:string,private heights:GalleryHeightCache,private height:GalleryHeightEntry,private revision=plugin.configurationRevision){super();}
-  eq(other:GalleryWidget){return this.revision===other.revision&&this.path===other.path&&this.group.from===other.group.from&&this.group.raw===other.group.raw&&this.source===other.source;}
+  eq(other:GalleryWidget){return this.revision===other.revision&&this.path===other.path&&this.group.from===other.group.from&&this.group.raw===other.group.raw&&this.source===other.source&&this.height.signature===other.height.signature;}
   get estimatedHeight(){return this.heights.estimate(this.height);}
   toDOM(view:EditorView){
     const host=view.dom.ownerDocument.createElement('div');host.className='ilg-host ilg-live';host.contentEditable='false';
     host.dataset.ilgGroupId=this.group.options.id;
-    const child=new GalleryChild(host,this.plugin,this.group,this.path,this.source);child.load();widgetChildren.set(host,child);
+    const child=new GalleryChild(host,this.plugin,this.group,this.path,this.source);child.load();widgetChildren.set(host,child);widgetSignatures.set(host,this.height.signature);
     widgetHeightCleanup.set(host,observeGalleryHeight(view,host,this.heights,this.height));
     return host;
   }
+  updateDOM(host:HTMLElement,view:EditorView){
+    const child=widgetChildren.get(host);
+    if(!child||child.context.path!==this.path||widgetSignatures.get(host)!==this.height.signature)return false;
+    child.update(this.group,this.path,this.source);
+    widgetHeightCleanup.get(host)?.();
+    widgetHeightCleanup.set(host,observeGalleryHeight(view,host,this.heights,this.height));
+    return true;
+  }
   ignoreEvent(){return true;}
-  destroy(host:HTMLElement){widgetHeightCleanup.get(host)?.();widgetHeightCleanup.delete(host);widgetChildren.get(host)?.unload();widgetChildren.delete(host);}
+  destroy(host:HTMLElement){widgetHeightCleanup.get(host)?.();widgetHeightCleanup.delete(host);widgetChildren.get(host)?.unload();widgetChildren.delete(host);widgetSignatures.delete(host);}
 }
 
 function decorations(state:EditorState,plugin:ImageLayoutsEnhanced,groups:GalleryGroup[],heights:GalleryHeightCache):DecorationSet{
@@ -117,7 +132,7 @@ export default class ImageLayoutsEnhanced extends Plugin {
   private sectionSnapshots=new WeakMap<HTMLElement,{path:string;source:string}>();
   private imageSources=new Map<string,string>();
   private navigationRenderers=new WeakMap<HTMLElement,{path:string;images:GalleryImage[];renderer:GalleryRenderer}>();
-  private hostGroups=new WeakMap<HTMLElement,{group:GalleryGroup;path:string;source:string}>();
+  private hostGroups=new WeakMap<HTMLElement,GalleryContext>();
   private parsedSources=new Map<string,{source:string;groups:GalleryGroup[];refs:ReturnType<typeof extractImages>}>();
   private parsed(source:string,path:string){
     const saved=this.parsedSources.get(path);if(saved?.source===source)return saved;
@@ -429,31 +444,34 @@ export default class ImageLayoutsEnhanced extends Plugin {
     if(!edit){new Notice('图片组已更新，请在当前内容上操作');return;}
     editor.replaceRange(edit.insert,editor.offsetToPos(edit.from),editor.offsetToPos(edit.to));
   }
-  private async editFile(path:string,group:GalleryGroup,patch:Partial<GalleryOptions>|'unwrap'){
+  private async editFile(path:string,group:GalleryGroup,patch:Partial<GalleryOptions>|'unwrap',selectedIndex?:number){
     const file=this.app.vault.getAbstractFileByPath(path);if(!(file instanceof TFile))throw Error('笔记位置已更新，请重新打开设置');
     const view=this.app.workspace.getLeavesOfType('markdown').map(leaf=>leaf.view).find(view=>view instanceof MarkdownView&&view.file?.path===path&&view.getMode()==='source') as MarkdownView|undefined;
     const source=view?view.editor.getValue():await this.app.vault.cachedRead(file);
     const parsed=parseGroups(source),current=resolveGallerySourceTarget(source,group)?.group;
     if(!current)throw Error('图片组已更新，请在当前画廊上重新打开设置');
-    let edit:Edit|null;
+    let edit:Edit|null,selectedId=current.options.id;
     if(patch==='unwrap')edit=current.kind==='comment'?unwrapGroup(source,current):editLegacyGroup(source,current,'unwrap');
     else{
       const effective=getEffectiveOptions(current,path,this.groupSettings);
       const duplicate=current.kind==='comment'&&parsed.filter(item=>item.options.id===current!.options.id).length>1;
       const id=effective.id&&!duplicate?effective.id:shortId();
+      selectedId=id;
       const options=normalizeOptions({...effective,...patch,id});
       await this.storeConfigurations({[groupKey(path,id)]:getStoredOptions(options)});
       edit=current.kind==='comment'?minimalHeaderEdit(source,current,options):editLegacyGroup(source,current,options,true);
     }
     if(!edit)throw Error('图片组已更新，请在当前画廊上重新打开设置');
+    const selectedKey=`${path}:${selectedId}:0`,previousSelection=this.selectedImages.get(selectedKey);
     try{
+      if(selectedIndex!==undefined)this.selectedImages.set(selectedKey,selectedIndex);
       if(view){if(!this.app.workspace.getLeavesOfType('markdown').some(leaf=>leaf.view===view)||view.getMode()!=='source'||view.editor.getValue()!==source||view.file?.path!==path)throw Error('配置已保存，笔记视图已更新，请重新打开设置');this.applyEditor(view.editor,edit);}
       else{
         let changed=false;
         await this.app.vault.process(file,currentSource=>{if(currentSource!==source||file.path!==path||this.app.workspace.getLeavesOfType('markdown').some(leaf=>leaf.view instanceof MarkdownView&&leaf.view.file?.path===path&&leaf.view.getMode()==='source'))return currentSource;changed=true;return currentSource.slice(0,edit!.from)+edit!.insert+currentSource.slice(edit!.to);});
         if(!changed)throw Error('配置已保存，笔记内容已更新，请重新打开设置');
       }
-    }catch(error){console.error('Image Layouts Enhanced: source write',error);new Notice('图片组更新遇到问题，请稍后重试');throw error;}
+    }catch(error){if(selectedIndex!==undefined){if(previousSelection===undefined)this.selectedImages.delete(selectedKey);else this.selectedImages.set(selectedKey,previousSelection);}console.error('Image Layouts Enhanced: source write',error);new Notice('图片组更新遇到问题，请稍后重试');throw error;}
     this.refreshConfiguration(path);
   }
   private async referenceSnapshot(path:string,origin?:HTMLElement){
@@ -507,7 +525,7 @@ export default class ImageLayoutsEnhanced extends Plugin {
     };
     const images=extracted.map((ref,index)=>{
       const alt=ref.kind==='wiki'?ref.alt.split('|').filter(part=>!/^\d+(?:x\d+)?$/.test(part.trim())).join('|'):ref.alt;
-      const src=resolve(ref.target);return{src,target:ref.target,alt:group.options.descriptions[index]??alt,line:ref.line,sourceOffset:ref.offset,missing:!src};
+      const src=resolve(ref.target);return{src,target:ref.target,alt,line:ref.line,sourceOffset:ref.offset,missing:!src};
     });
     if(group.options.fromFolder){
       const folder=group.options.fromFolder.replace(/^\/+|\/+$/g,'');
@@ -516,7 +534,7 @@ export default class ImageLayoutsEnhanced extends Plugin {
       if(group.options.reverse)files.reverse();if(group.options.limit>0)files=files.slice(0,group.options.limit);
       images.push(...files.map(file=>({src:this.app.vault.getResourcePath(file),target:file.path,alt:file.basename,line:group.startLine,sourceOffset:group.bodyFrom,missing:false})));
     }
-    return images;
+    return orderImages(images.map((image,index)=>({...image,alt:group.options.descriptions[index]??image.alt})),group.options.imageOrder);
   }
   getSourceImageNavigationLine(source:string,offset:number):number|null {
     return parseGroups(source).find(group=>offset>=group.bodyFrom&&offset<group.bodyTo)?.startLine??null;
@@ -529,22 +547,44 @@ export default class ImageLayoutsEnhanced extends Plugin {
     }
     return null;
   }
-  mount(host:HTMLElement,group:GalleryGroup,path:string,source:string,component:MarkdownRenderChild):GalleryRenderer{
-    this.hostGroups.set(host,{group,path,source});
+  updateMountedContext(host:HTMLElement,context:GalleryContext){
+    this.hostGroups.set(host,context);
+    const mounted=this.navigationRenderers.get(host);
+    if(mounted){mounted.path=context.path;mounted.images=this.images({...context.group,options:getEffectiveOptions(context.group,context.path,this.groupSettings)},context.path,context.source);}
+  }
+  mount(host:HTMLElement,group:GalleryGroup,path:string,source:string,component:MarkdownRenderChild,context:GalleryContext={group,path,source}):GalleryRenderer{
+    this.hostGroups.set(host,context);
     const effective={...group,options:getEffectiveOptions(group,path,this.groupSettings)};
     const images=this.images(effective,path,source);
-    const siblings=this.parsed(source,path).groups.filter(item=>item.options.id===group.options.id);
-    const occurrence=siblings.findIndex(item=>item.from===group.from);
-    const selectionKey=`${path}:${group.options.id||group.from}:${occurrence}`;
+    const selectionKey=()=>{
+      const {group,path,source}=context;
+      const siblings=this.parsed(source,path).groups.filter(item=>item.options.id===group.options.id);
+      const occurrence=siblings.findIndex(item=>item.from===group.from);
+      return `${path}:${group.options.id||group.from}:${occurrence}`;
+    };
     host.dataset.ilgGroupId=group.options.id;host.dataset.ilgLayout=group.options.layout;
-    const renderer=new GalleryRenderer(host,images,effective.options,{
-      open:(index,origin)=>{const result=openGalleryImage(this.app,images,index,origin,path);this.diagnostics[result]++;},
-      change:patch=>void this.editFile(path,group,patch).catch(()=>this.refreshConfiguration(path)),
-      edit:anchor=>void this.editReferences(path,group,host,anchor).catch(error=>{console.error('Image Layouts Enhanced: edit references',error);new Notice('图片引用打开遇到问题，请重试');}),unwrap:()=>void this.editFile(path,group,'unwrap').catch(()=>{}),
-      pickLayout:anchor=>new LayoutPicker(this.app,images.length,patch=>void this.editFile(path,group,patch).catch(()=>this.refreshConfiguration(path)),anchor,effective.options).open(),
-      configure:anchor=>new GalleryConfiguration(anchor??host,effective.options,patch=>this.editFile(path,group,patch)).open(),
-      initialIndex:this.selectedImages.get(selectionKey)??0,
-      select:index=>{if(this.selectedImages.size>512)this.selectedImages.delete(this.selectedImages.keys().next().value!);this.selectedImages.set(selectionKey,index);},
+    const renderer=new GalleryRenderer(host,images,{...effective.options,descriptions:images.map(image=>image.alt)},{
+      open:(index,origin)=>{const result=openGalleryImage(this.app,this.navigationRenderers.get(host)?.images??images,index,origin,context.path);this.diagnostics[result]++;},
+      change:patch=>void this.editFile(context.path,context.group,patch).catch(()=>this.refreshConfiguration(context.path)),
+      edit:anchor=>void this.editReferences(context.path,context.group,host,anchor).catch(error=>{console.error('Image Layouts Enhanced: edit references',error);new Notice('图片引用打开遇到问题，请重试');}),unwrap:()=>void this.editFile(context.path,context.group,'unwrap').catch(()=>{}),
+      pickLayout:anchor=>new LayoutPicker(this.app,images.length,patch=>void this.editFile(context.path,context.group,patch).catch(()=>this.refreshConfiguration(context.path)),anchor,getEffectiveOptions(context.group,context.path,this.groupSettings)).open(),
+      configure:anchor=>new GalleryConfiguration(anchor??host,getEffectiveOptions(context.group,context.path,this.groupSettings),patch=>this.editFile(context.path,context.group,patch)).open(),
+      resize:async patch=>{
+        try{await this.editFile(context.path,context.group,patch);}
+        catch(error){new Notice('画廊大小保存遇到问题，请重试');throw error;}
+      },
+      initialIndex:this.selectedImages.get(selectionKey())??0,
+      select:index=>{if(this.selectedImages.size>512)this.selectedImages.delete(this.selectedImages.keys().next().value!);this.selectedImages.set(selectionKey(),index);},
+      reorder:async(from,to,visibleOrder)=>{
+        const current=this.navigationRenderers.get(host);if(!current||this.disposed)return;
+        const order=moveImageOrder(current.images,from,to,visibleOrder);
+        const key=selectionKey(),previous=this.selectedImages.get(key),active=current.renderer.activeIndex;
+        const activeKey=current.images[active]?.orderKey;
+        const selectedIndex=Math.max(0,activeKey?order.indexOf(activeKey):active);
+        this.selectedImages.set(key,selectedIndex);
+        try{await this.editFile(context.path,context.group,{imageOrder:order},selectedIndex);}
+        catch(error){if(previous===undefined)this.selectedImages.delete(key);else this.selectedImages.set(key,previous);new Notice('图片顺序保存遇到问题，请重试');throw error;}
+      },
     });
     this.navigationRenderers.set(host,{path,images,renderer});
     const bodyRefs=this.parsed(source,path).refs.filter(ref=>ref.offset>=group.bodyFrom&&ref.offset<group.bodyTo).map(ref=>({...ref,offset:ref.offset-group.bodyFrom}));

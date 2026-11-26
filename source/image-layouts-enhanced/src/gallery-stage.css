@@ -3,6 +3,17 @@
   position: relative;
   height: max(var(--ilg-height), calc(var(--ilg-stage-rows) * 64px + (var(--ilg-stage-rows) - 1) * var(--ilg-gap)));
 }
+/* In a single row, let the tallest image and its caption determine the height up to the configured limit. */
+.ilg-gallery[data-fit="contain"] .ilg-single-row-grid {
+  height: auto;
+  min-height: 64px;
+  max-height: var(--ilg-height);
+}
+.ilg-gallery[data-fit="contain"] .ilg-single-row-grid .ilg-image-button {
+  flex-basis: auto;
+  height: auto;
+}
+.ilg-gallery[data-fit="contain"] .ilg-single-row-grid .ilg-image-button img { height: auto; }
 .ilg-stage-main { min-height: 0; overflow: hidden; border-radius: var(--ilg-radius); }
 .ilg-stage-main-content, .ilg-stage-main-content > .ilg-cell-figure { height: 100%; }
 .ilg-stage-main-content > .ilg-cell-figure { width: 100%; }
@@ -52,3 +63,15 @@
 .ilg-gallery .ilg-stage-zoom:hover { background: rgba(35, 39, 48, .78); }
 .ilg-gallery .ilg-stage-zoom:focus-visible { outline: 2px solid var(--ilg-accent); outline-offset: 2px; }
 @media (hover: none) { .ilg-gallery .ilg-stage-zoom { opacity: 1; } }
+
+/* 拖动只显示插入位置，松手保存后由画廊同步实际顺序。 */
+.ilg-gallery.ilg-reorder-enabled .ilg-thumb { cursor: grab; }
+.ilg-gallery.ilg-sorting, .ilg-gallery.ilg-sorting .ilg-thumb { cursor: grabbing; user-select: none; -webkit-user-select: none; }
+.ilg-gallery .ilg-thumb.ilg-drag-source { opacity: .45; outline: 2px solid var(--ilg-accent); outline-offset: -2px; }
+.ilg-gallery [data-ilg-drop-side] { position: relative; }
+.ilg-gallery [data-ilg-drop-side]::after { content: ''; position: absolute; z-index: 4; border-radius: 2px; background: var(--ilg-accent); pointer-events: none; }
+.ilg-gallery [data-ilg-drop-side="left"]::after { top: 0; bottom: 0; left: 0; width: 4px; }
+.ilg-gallery [data-ilg-drop-side="right"]::after { top: 0; bottom: 0; right: 0; width: 4px; }
+.ilg-gallery [data-ilg-drop-side="top"]::after { top: 0; left: 0; right: 0; height: 4px; }
+.ilg-gallery [data-ilg-drop-side="bottom"]::after { bottom: 0; left: 0; right: 0; height: 4px; }
+.ilg-gallery.ilg-reorder-pending .ilg-thumb { cursor: progress; }

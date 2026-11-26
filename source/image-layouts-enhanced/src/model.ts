@@ -44,6 +44,7 @@ function normalized(input: unknown, fallback: GalleryOptions): GalleryOptions {
     align: ['left','center','right','full'].includes(align) ? align as GalleryOptions['align'] : fallback.align,
     width: dimension(object.width,fallback.width),
     descriptions: Array.isArray(object.descriptions) ? object.descriptions.map(value => typeof value === 'string' ? value : '') : [...fallback.descriptions],
+    imageOrder: Array.isArray(object.imageOrder) ? [...new Set(object.imageOrder.filter((value):value is string=>typeof value==='string'))] : [...fallback.imageOrder],
     fromFolder: text(object.fromFolder,fallback.fromFolder),
     sortBy: ['name','mtime'].includes(word(object.sortBy)) ? word(object.sortBy) as 'name'|'mtime' : fallback.sortBy,
     reverse: bool(object.reverse,fallback.reverse),

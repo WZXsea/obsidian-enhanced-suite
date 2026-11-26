@@ -45,7 +45,8 @@ var DEFAULT_OPTIONS = {
   fromFolder: "",
   sortBy: "name",
   reverse: false,
-  limit: 0
+  limit: 0,
+  imageOrder: []
 };
 var LAYOUT_LABELS = {
   a: "\u53CC\u56FE\u7B49\u5BBD",
@@ -112,6 +113,7 @@ function normalized(input, fallback) {
     align: ["left", "center", "right", "full"].includes(align) ? align : fallback.align,
     width: dimension(object2.width, fallback.width),
     descriptions: Array.isArray(object2.descriptions) ? object2.descriptions.map((value) => typeof value === "string" ? value : "") : [...fallback.descriptions],
+    imageOrder: Array.isArray(object2.imageOrder) ? [...new Set(object2.imageOrder.filter((value) => typeof value === "string"))] : [...fallback.imageOrder],
     fromFolder: text(object2.fromFolder, fallback.fromFolder),
     sortBy: ["name", "mtime"].includes(word(object2.sortBy)) ? word(object2.sortBy) : fallback.sortBy,
     reverse: bool(object2.reverse, fallback.reverse),
@@ -736,6 +738,249 @@ function getLayoutChoices(count) {
   return choices;
 }
 
+// src/thumbnail-reorder.ts
+var ThumbnailReorder = class {
+  constructor(root, track, order, reorder) {
+    this.root = root;
+    this.track = track;
+    this.order = order;
+    this.reorder = reorder;
+    this.doc = root.ownerDocument;
+    this.win = this.doc.defaultView;
+    root.classList.add("ilg-reorder-enabled");
+    this.listen(root, "pointerdown", (event) => this.down(event));
+    this.listen(root, "click", (event) => {
+      if (Date.now() >= this.suppressClickUntil) return;
+      this.suppressClickUntil = 0;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }, true);
+    this.listen(root, "contextmenu", (event) => {
+      if (this.session?.active) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    }, true);
+    this.listen(root, "keydown", (event) => this.key(event));
+  }
+  doc;
+  win;
+  session;
+  frame = 0;
+  pending = false;
+  destroyed = false;
+  suppressClickUntil = 0;
+  clickCleanup;
+  listeners = [];
+  gestureListeners = [];
+  destroy() {
+    this.destroyed = true;
+    this.cancel();
+    this.listeners.splice(0).forEach((remove) => remove());
+    this.root.classList.remove("ilg-reorder-enabled", "ilg-reorder-pending");
+    this.root.removeAttribute("aria-busy");
+  }
+  /** 版式或主图切换时取消尚在进行的拖动。 */
+  cancel() {
+    this.finish(false);
+  }
+  listen(target, type, listener, options = false, gesture = false) {
+    target.addEventListener(type, listener, options);
+    (gesture ? this.gestureListeners : this.listeners).push(() => target.removeEventListener(type, listener, options));
+  }
+  down(event) {
+    if (this.destroyed || this.pending || event.button !== 0 || event.isPrimary === false) return;
+    if (this.session) {
+      this.cancel();
+      return;
+    }
+    const track = this.track();
+    const source = event.target?.closest(".ilg-thumb[data-index]");
+    const order = this.order();
+    if (!track || !source || !track.contains(source) || order.length < 2) return;
+    const from = Number(source.dataset.index);
+    if (!order.includes(from)) return;
+    const session = {
+      pointer: event.pointerId,
+      touch: event.pointerType === "touch",
+      trusted: event.isTrusted,
+      source,
+      track,
+      from,
+      order: [...order],
+      x: event.clientX,
+      y: event.clientY,
+      startX: event.clientX,
+      startY: event.clientY,
+      active: false
+    };
+    this.session = session;
+    if (session.touch) session.timer = this.win?.setTimeout(() => this.begin(session), 420);
+    this.listen(this.doc, "pointermove", (move) => this.move(move), { capture: true, passive: false }, true);
+    this.listen(this.doc, "pointerup", (up) => {
+      if (up.pointerId !== session.pointer) return;
+      if (session.active) {
+        up.preventDefault();
+        up.stopPropagation();
+      }
+      this.finish(true);
+    }, true, true);
+    this.listen(this.doc, "pointercancel", () => this.cancel(), true, true);
+    this.listen(this.doc, "pointerdown", (down) => {
+      if (down.pointerId !== session.pointer) this.cancel();
+    }, true, true);
+    this.listen(this.doc, "keydown", (key) => {
+      if (key.key === "Escape") {
+        key.preventDefault();
+        key.stopPropagation();
+        this.cancel();
+      }
+    }, true, true);
+    this.listen(this.doc, "touchmove", (move) => {
+      if (this.session?.active) move.preventDefault();
+    }, { capture: true, passive: false }, true);
+    this.listen(this.doc, "scroll", (scroll) => {
+      if (!session.active || scroll.target !== session.track) this.cancel();
+    }, true, true);
+    if (this.win) this.listen(this.win, "blur", () => this.cancel(), false, true);
+  }
+  begin(session) {
+    if (this.session !== session || !session.source.isConnected || this.track() !== session.track) return;
+    session.active = true;
+    this.win?.clearTimeout(session.timer);
+    session.source.classList.add("ilg-drag-source");
+    session.source.setAttribute("aria-grabbed", "true");
+    this.root.classList.add("ilg-sorting");
+    if (session.trusted) this.root.setPointerCapture(session.pointer);
+    this.updateTarget(session);
+    this.tick();
+  }
+  move(event) {
+    const session = this.session;
+    if (!session || event.pointerId !== session.pointer) return;
+    session.x = event.clientX;
+    session.y = event.clientY;
+    if (!session.active) {
+      if (Math.hypot(session.x - session.startX, session.y - session.startY) < 7) return;
+      if (session.touch) {
+        this.cancel();
+        return;
+      }
+      this.begin(session);
+    }
+    if (!session.source.isConnected || this.track() !== session.track) {
+      this.cancel();
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    this.updateTarget(session);
+  }
+  horizontal(track) {
+    if (track.classList.contains("ilg-stage-thumbnails")) return Number(track.dataset.sideColumns ?? 1) > 1;
+    return !track.closest(".ilg-focus-side");
+  }
+  updateTarget(session) {
+    session.target?.element.removeAttribute("data-ilg-drop-side");
+    session.target = void 0;
+    const hit = this.doc.elementFromPoint(session.x, session.y);
+    const button = hit?.closest(".ilg-thumb[data-index]");
+    if (!button || !session.track.contains(button)) return;
+    const index = Number(button.dataset.index), position = session.order.indexOf(index), from = session.order.indexOf(session.from);
+    if (position < 0) return;
+    const element = button.closest(".ilg-stage-thumb-figure") ?? button;
+    const rect = element.getBoundingClientRect(), horizontal = this.horizontal(session.track);
+    const after = horizontal ? session.x > rect.left + rect.width / 2 : session.y > rect.top + rect.height / 2;
+    const destination2 = Math.max(0, Math.min(session.order.length - 1, position + Number(after) - Number(from < position + Number(after))));
+    if (destination2 === from) return;
+    const side = horizontal ? after ? "right" : "left" : after ? "bottom" : "top";
+    session.target = { element, index: session.order[destination2], side };
+    element.setAttribute("data-ilg-drop-side", side);
+  }
+  tick() {
+    const session = this.session;
+    if (!session?.active || !this.win) return;
+    const rect = session.track.getBoundingClientRect();
+    const edge = (value, start, end) => value < start + 28 ? -9 : value > end - 28 ? 9 : 0;
+    if (session.x >= rect.left - 18 && session.x <= rect.right + 18 && session.y >= rect.top - 18 && session.y <= rect.bottom + 18) {
+      if (session.track.scrollWidth > session.track.clientWidth) session.track.scrollLeft += edge(session.x, rect.left, rect.right);
+      if (session.track.scrollHeight > session.track.clientHeight) session.track.scrollTop += edge(session.y, rect.top, rect.bottom);
+      this.updateTarget(session);
+    }
+    this.frame = this.win.requestAnimationFrame(() => {
+      this.frame = 0;
+      this.tick();
+    });
+  }
+  finish(drop) {
+    const session = this.session;
+    if (!session) return;
+    this.session = void 0;
+    this.win?.clearTimeout(session.timer);
+    if (this.frame) this.win?.cancelAnimationFrame(this.frame);
+    this.frame = 0;
+    this.gestureListeners.splice(0).forEach((remove) => remove());
+    session.source.classList.remove("ilg-drag-source");
+    session.source.removeAttribute("aria-grabbed");
+    session.target?.element.removeAttribute("data-ilg-drop-side");
+    this.root.classList.remove("ilg-sorting");
+    if (this.root.hasPointerCapture(session.pointer)) this.root.releasePointerCapture(session.pointer);
+    if (session.active) this.suppressNextClick();
+    if (drop && session.active && session.target) this.commit(session.from, session.target.index, session.order);
+  }
+  suppressNextClick() {
+    this.clickCleanup?.();
+    this.suppressClickUntil = Date.now() + 700;
+    const group = this.root.dataset.ilgGallery;
+    let timer;
+    const remove = () => {
+      this.doc.removeEventListener("click", suppress, true);
+      this.win?.clearTimeout(timer);
+      this.suppressClickUntil = 0;
+      if (this.clickCleanup === remove) this.clickCleanup = void 0;
+    };
+    const suppress = (event) => {
+      const target = event.target, gallery = target?.closest(".ilg-gallery");
+      if (!target || !this.root.contains(target) && (!gallery || gallery.dataset.ilgGallery !== group)) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      remove();
+    };
+    this.doc.addEventListener("click", suppress, true);
+    timer = this.win?.setTimeout(remove, 700);
+    this.clickCleanup = remove;
+  }
+  key(event) {
+    if (!event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || this.pending || this.session) return;
+    const button = event.target?.closest(".ilg-thumb[data-index]");
+    if (!button || !this.track()?.contains(button)) return;
+    const delta = ["ArrowLeft", "ArrowUp"].includes(event.key) ? -1 : ["ArrowRight", "ArrowDown"].includes(event.key) ? 1 : 0;
+    if (!delta) return;
+    const order = this.order(), from = Number(button.dataset.index), position = order.indexOf(from), next = position + delta;
+    event.preventDefault();
+    event.stopPropagation();
+    if (position >= 0 && next >= 0 && next < order.length) this.commit(from, order[next], order);
+  }
+  commit(from, to, order) {
+    if (this.pending || this.destroyed || from === to) return;
+    this.pending = true;
+    this.root.classList.add("ilg-reorder-pending");
+    this.root.setAttribute("aria-busy", "true");
+    void (async () => {
+      try {
+        await this.reorder(from, to, [...order]);
+      } catch {
+      } finally {
+        this.pending = false;
+        if (!this.destroyed) {
+          this.root.classList.remove("ilg-reorder-pending");
+          this.root.removeAttribute("aria-busy");
+        }
+      }
+    })();
+  }
+};
+
 // src/renderer.ts
 var FIT_LABELS = { contain: "\u5B8C\u6574\u663E\u793A", cover: "\u586B\u6EE1\u533A\u57DF", natural: "\u539F\u59CB\u6BD4\u4F8B" };
 var FIT_ORDER = ["contain", "cover", "natural"];
@@ -798,7 +1043,14 @@ var GalleryRenderer = class {
     this.root.appendChild(toolbar);
     this.body = this.element("div", "ilg-body");
     this.root.appendChild(this.body);
+    if (callbacks.resize && images.length) this.attachResizeHandle(callbacks.resize);
     host.appendChild(this.root);
+    if (callbacks.reorder) this.thumbnailReorder = new ThumbnailReorder(
+      this.root,
+      () => this.track,
+      () => this.thumbButtons.map((button) => Number(button.dataset.index)),
+      (from, to, order) => callbacks.reorder(from, to, order)
+    );
     this.listen(this.root, "click", (event) => event.stopPropagation());
     this.listen(this.root, "keydown", (event) => this.onKeyDown(event));
     this.focusPlacement = getFocusPlacement(host.getBoundingClientRect().width);
@@ -806,7 +1058,7 @@ var GalleryRenderer = class {
     if (Resize) {
       this.observer = new Resize((entries) => {
         if (this.destroyed) return;
-        const width = entries.find((entry) => entry.target === host)?.contentRect.width;
+        const width = entries.find((entry) => entry.target === this.root)?.contentRect.width;
         if (width === void 0) return;
         const placement = getFocusPlacement(width);
         if (placement !== this.focusPlacement) {
@@ -821,7 +1073,7 @@ var GalleryRenderer = class {
           }
         }
       });
-      this.observer.observe(host);
+      this.observer.observe(this.root);
     }
     this.render();
   }
@@ -852,10 +1104,17 @@ var GalleryRenderer = class {
   scrollFrame = 0;
   focusFrame = 0;
   pointerStart;
+  cancelResize;
   suppressClickUntil = 0;
+  thumbnailReorder;
+  get activeIndex() {
+    return this.index;
+  }
   destroy() {
     if (this.destroyed) return;
     this.destroyed = true;
+    this.cancelResize?.();
+    this.thumbnailReorder?.destroy();
     this.observer?.disconnect();
     this.cleanups.splice(0).forEach((cleanup) => cleanup());
     if (this.scrollFrame) this.doc.defaultView?.cancelAnimationFrame(this.scrollFrame);
@@ -909,7 +1168,91 @@ var GalleryRenderer = class {
     this.render();
     this.callbacks.change(patch);
   }
+  applySize({ width, height }) {
+    this.root.style.setProperty("--ilg-height", `${height}px`);
+    this.root.style.width = this.options.align === "full" ? "100%" : width;
+    this.root.style.maxWidth = `min(100%, ${width})`;
+  }
+  attachResizeHandle(save) {
+    const handle = this.element("button", "ilg-resize-handle");
+    handle.type = "button";
+    handle.setAttribute("aria-label", "\u8C03\u6574\u753B\u5ECA\u5927\u5C0F");
+    handle.title = "\u62D6\u52A8\u8C03\u6574\u753B\u5ECA\u5927\u5C0F";
+    this.root.appendChild(handle);
+    let drag;
+    const patchAt = (event, start) => {
+      const patch = {};
+      const dx = event.clientX - start.x, dy = event.clientY - start.y;
+      const limit = Math.min(this.host.clientWidth, 4096);
+      const centered = this.options.align === "full" || this.options.align === "center";
+      const width = Math.round(Math.min(limit, Math.max(120, start.width + dx * (centered ? 2 : 1))));
+      if (Math.abs(dx) >= 3 && width > 0 && width !== start.width) patch.width = `${width}px`;
+      if (start.height !== void 0 && Math.abs(dy) >= 3) {
+        const height = Math.round(Math.max(120, Math.min(1200, start.height + dy)));
+        if (height !== start.height) patch.height = height;
+      }
+      return patch;
+    };
+    const end = () => {
+      const id = drag?.id;
+      drag = void 0;
+      this.root.classList.remove("ilg-resizing");
+      if (id !== void 0 && handle.hasPointerCapture(id)) handle.releasePointerCapture(id);
+    };
+    this.cancelResize = () => {
+      if (!drag) return;
+      end();
+      this.applySize(this.options);
+    };
+    this.listen(handle, "pointerdown", (event) => {
+      const pointer = event;
+      if (drag || handle.disabled || pointer.button !== 0 || !pointer.isPrimary) return;
+      const frame = this.body.querySelector(".ilg-grid, .ilg-filmstrip, .ilg-main-figure .ilg-image-button");
+      handle.setPointerCapture(pointer.pointerId);
+      drag = { id: pointer.pointerId, x: pointer.clientX, y: pointer.clientY, width: this.root.offsetWidth, height: frame?.offsetHeight };
+      event.preventDefault();
+      event.stopPropagation();
+      handle.focus({ preventScroll: true });
+      this.root.classList.add("ilg-resizing");
+    });
+    this.listen(handle, "pointermove", (event) => {
+      const pointer = event;
+      if (drag?.id === pointer.pointerId) this.applySize({ ...this.options, ...patchAt(pointer, drag) });
+    });
+    this.listen(handle, "pointerup", (event) => {
+      const pointer = event;
+      if (drag?.id !== pointer.pointerId) return;
+      const patch = patchAt(pointer, drag);
+      end();
+      this.applySize({ ...this.options, ...patch });
+      if (patch.width === void 0 && patch.height === void 0) return;
+      handle.disabled = true;
+      void save(patch).then(() => Object.assign(this.options, patch)).catch(() => {
+        if (!this.destroyed) this.applySize(this.options);
+      }).finally(() => {
+        handle.disabled = false;
+      });
+    });
+    for (const type of ["pointercancel", "lostpointercapture"]) {
+      this.listen(handle, type, (event) => {
+        if (drag?.id === event.pointerId) this.cancelResize?.();
+      });
+    }
+    this.listen(handle, "keydown", (event) => {
+      if (event.key === "Escape" && drag) {
+        event.preventDefault();
+        this.cancelResize?.();
+      }
+      event.stopPropagation();
+    });
+    this.listen(handle, "click", (event) => {
+      event.stopPropagation();
+      if (event.detail === 0) this.callbacks.configure?.(handle);
+    });
+  }
   render() {
+    this.cancelResize?.();
+    this.thumbnailReorder?.cancel();
     if (this.scrollFrame) this.doc.defaultView?.cancelAnimationFrame(this.scrollFrame);
     if (this.focusFrame) this.doc.defaultView?.cancelAnimationFrame(this.focusFrame);
     this.scrollFrame = 0;
@@ -926,11 +1269,9 @@ var GalleryRenderer = class {
     this.root.dataset.fit = this.options.fit;
     this.root.dataset.overlay = this.options.overlay;
     this.root.dataset.align = this.options.align;
-    this.root.style.setProperty("--ilg-height", `${this.options.height}px`);
     this.root.style.setProperty("--ilg-gap", `${this.options.gap}px`);
     this.root.style.setProperty("--ilg-radius", `${this.options.radius}px`);
-    this.root.style.width = this.options.align === "full" ? "100%" : this.options.width;
-    this.root.style.maxWidth = this.options.width;
+    this.applySize(this.options);
     this.updateLayoutChoices();
     this.setButtonIcon(this.fitButton, FIT_ICONS[this.options.fit]);
     this.fitButton.dataset.fit = this.options.fit;
@@ -1016,6 +1357,7 @@ var GalleryRenderer = class {
         else if (Date.now() >= this.suppressClickUntil) this.callbacks.open(index, img);
       }
     );
+    if (thumbnail && this.callbacks.reorder) button.title += "\uFF1B\u62D6\u52A8\u8C03\u6574\u987A\u5E8F\uFF0C\u89E6\u5C4F\u957F\u6309\u540E\u62D6\u52A8\uFF1BAlt\uFF0B\u65B9\u5411\u952E\u79FB\u52A8";
     img = this.doc.createElement("img");
     img.alt = alt;
     img.loading = thumbnail || !["carousel", "focus"].includes(this.options.layout) ? "lazy" : "eager";
@@ -1109,6 +1451,7 @@ ${image.alt || image.target || `\u56FE\u7247 ${index + 1}`}`;
     this.body.appendChild(stage);
   }
   renderStageThumbnails(grid = getDominantGridDefinition(this.options.layout, this.images.length)) {
+    this.thumbnailReorder?.cancel();
     const track = this.track;
     if (!track) return;
     const scrollTop = track.scrollTop;
@@ -1141,6 +1484,7 @@ ${image.alt || image.target || `\u56FE\u7247 ${index + 1}`}`;
   renderGrid() {
     const grid = getMatchingGridDefinition(this.options.layout, this.images.length, this.options.grid);
     const stage = this.element("div", "ilg-grid ilg-complete-grid");
+    if (grid.rows === 1 && grid.slots > 1) stage.classList.add("ilg-single-row-grid");
     stage.style.gridTemplateColumns = grid.columnFractions.map((weight) => `minmax(0, ${weight}fr)`).join(" ");
     stage.style.gridTemplateRows = `repeat(${grid.rows}, minmax(0, 1fr))`;
     stage.style.setProperty("--ilg-stage-rows", String(grid.rows));
@@ -2861,6 +3205,11 @@ var ImageControls = class {
         if (!this.findImage(target)) this.hide();
         return;
       }
+      if (target?.closest(".ilg-gallery.ilg-reorder-enabled .ilg-thumb")) {
+        this.cancelPress();
+        this.hide();
+        return;
+      }
       if (this.press) {
         this.cancelPress();
         return;
@@ -3803,6 +4152,53 @@ function observeGalleryHeight(view, host, cache, entry) {
   };
 }
 
+// src/order.ts
+function imageOrderKeys(images) {
+  const occurrences = /* @__PURE__ */ new Map();
+  return images.map((image) => {
+    const occurrence = occurrences.get(image.target) ?? 0;
+    occurrences.set(image.target, occurrence + 1);
+    return image.orderKey ?? JSON.stringify([image.target, occurrence]);
+  });
+}
+function orderImages(images, order) {
+  const keys = imageOrderKeys(images);
+  const available = new Map(images.map((image, index) => [keys[index], { ...image, orderKey: keys[index] }]));
+  const sorted = [];
+  for (const key of order) {
+    const image = available.get(key);
+    if (image) {
+      sorted.push(image);
+      available.delete(key);
+    }
+  }
+  return [...sorted, ...available.values()];
+}
+function moveImageOrder(images, from, to, visibleOrder) {
+  if (!Number.isInteger(from) || !Number.isInteger(to) || from < 0 || to < 0 || from >= images.length || to >= images.length) {
+    throw new RangeError("\u56FE\u7247\u6392\u5E8F\u4F4D\u7F6E\u8D85\u51FA\u5F53\u524D\u753B\u5ECA\u8303\u56F4");
+  }
+  const order = imageOrderKeys(images);
+  if (visibleOrder) {
+    const visible = new Set(visibleOrder);
+    if (visible.size !== visibleOrder.length || !visible.has(from) || !visible.has(to) || visibleOrder.some((index) => !Number.isInteger(index) || index < 0 || index >= images.length)) {
+      throw new RangeError("\u7F29\u7565\u56FE\u6392\u5E8F\u4F4D\u7F6E\u8D85\u51FA\u5F53\u524D\u53EF\u89C1\u8303\u56F4");
+    }
+    const moved2 = [...visibleOrder], start = moved2.indexOf(from), end = moved2.indexOf(to);
+    const [image] = moved2.splice(start, 1);
+    moved2.splice(end, 0, image);
+    const slots = visibleOrder.length === images.length - 1 ? getStageThumbnailOrder(images.length, order.findIndex((_key, index) => !visible.has(index))) : order.flatMap((_key, index) => visible.has(index) ? [index] : []);
+    const next = [...order];
+    slots.forEach((index, slot) => {
+      next[index] = order[moved2[slot]];
+    });
+    return next;
+  }
+  const [moved] = order.splice(from, 1);
+  order.splice(to, 0, moved);
+  return order;
+}
+
 // src/main.ts
 var DEFAULT_SETTINGS = { layout: "g", fit: "contain", height: 320, gap: 8, radius: 8, centerImages: true };
 var lineOffset = (source, line) => {
@@ -3825,13 +4221,16 @@ var GalleryChild = class extends import_obsidian3.MarkdownRenderChild {
   constructor(host, plugin, group, path, source) {
     super(host);
     this.plugin = plugin;
-    this.group = group;
-    this.path = path;
-    this.source = source;
+    this.context = { group, path, source };
   }
   renderer;
+  context;
   onload() {
-    this.renderer = this.plugin.mount(this.containerEl, this.group, this.path, this.source, this);
+    this.renderer = this.plugin.mount(this.containerEl, this.context.group, this.context.path, this.context.source, this, this.context);
+  }
+  update(group, path, source) {
+    Object.assign(this.context, { group, path, source });
+    this.plugin.updateMountedContext(this.containerEl, this.context);
   }
   onunload() {
     this.renderer?.destroy();
@@ -3840,6 +4239,7 @@ var GalleryChild = class extends import_obsidian3.MarkdownRenderChild {
 };
 var widgetChildren = /* @__PURE__ */ new WeakMap();
 var widgetHeightCleanup = /* @__PURE__ */ new WeakMap();
+var widgetSignatures = /* @__PURE__ */ new WeakMap();
 var GalleryWidget = class extends import_view.WidgetType {
   constructor(plugin, group, path, source, heights, height, revision = plugin.configurationRevision) {
     super();
@@ -3852,7 +4252,7 @@ var GalleryWidget = class extends import_view.WidgetType {
     this.revision = revision;
   }
   eq(other) {
-    return this.revision === other.revision && this.path === other.path && this.group.from === other.group.from && this.group.raw === other.group.raw && this.source === other.source;
+    return this.revision === other.revision && this.path === other.path && this.group.from === other.group.from && this.group.raw === other.group.raw && this.source === other.source && this.height.signature === other.height.signature;
   }
   get estimatedHeight() {
     return this.heights.estimate(this.height);
@@ -3865,8 +4265,17 @@ var GalleryWidget = class extends import_view.WidgetType {
     const child = new GalleryChild(host, this.plugin, this.group, this.path, this.source);
     child.load();
     widgetChildren.set(host, child);
+    widgetSignatures.set(host, this.height.signature);
     widgetHeightCleanup.set(host, observeGalleryHeight(view, host, this.heights, this.height));
     return host;
+  }
+  updateDOM(host, view) {
+    const child = widgetChildren.get(host);
+    if (!child || child.context.path !== this.path || widgetSignatures.get(host) !== this.height.signature) return false;
+    child.update(this.group, this.path, this.source);
+    widgetHeightCleanup.get(host)?.();
+    widgetHeightCleanup.set(host, observeGalleryHeight(view, host, this.heights, this.height));
+    return true;
   }
   ignoreEvent() {
     return true;
@@ -3876,6 +4285,7 @@ var GalleryWidget = class extends import_view.WidgetType {
     widgetHeightCleanup.delete(host);
     widgetChildren.get(host)?.unload();
     widgetChildren.delete(host);
+    widgetSignatures.delete(host);
   }
 };
 function decorations(state, plugin, groups, heights) {
@@ -4427,25 +4837,28 @@ var ImageLayoutsEnhanced = class extends import_obsidian3.Plugin {
     }
     editor.replaceRange(edit.insert, editor.offsetToPos(edit.from), editor.offsetToPos(edit.to));
   }
-  async editFile(path, group, patch) {
+  async editFile(path, group, patch, selectedIndex) {
     const file = this.app.vault.getAbstractFileByPath(path);
     if (!(file instanceof import_obsidian3.TFile)) throw Error("\u7B14\u8BB0\u4F4D\u7F6E\u5DF2\u66F4\u65B0\uFF0C\u8BF7\u91CD\u65B0\u6253\u5F00\u8BBE\u7F6E");
     const view = this.app.workspace.getLeavesOfType("markdown").map((leaf) => leaf.view).find((view2) => view2 instanceof import_obsidian3.MarkdownView && view2.file?.path === path && view2.getMode() === "source");
     const source = view ? view.editor.getValue() : await this.app.vault.cachedRead(file);
     const parsed2 = parseGroups(source), current = resolveGallerySourceTarget(source, group)?.group;
     if (!current) throw Error("\u56FE\u7247\u7EC4\u5DF2\u66F4\u65B0\uFF0C\u8BF7\u5728\u5F53\u524D\u753B\u5ECA\u4E0A\u91CD\u65B0\u6253\u5F00\u8BBE\u7F6E");
-    let edit;
+    let edit, selectedId = current.options.id;
     if (patch === "unwrap") edit = current.kind === "comment" ? unwrapGroup(source, current) : editLegacyGroup(source, current, "unwrap");
     else {
       const effective = getEffectiveOptions(current, path, this.groupSettings);
       const duplicate = current.kind === "comment" && parsed2.filter((item) => item.options.id === current.options.id).length > 1;
       const id = effective.id && !duplicate ? effective.id : shortId();
+      selectedId = id;
       const options = normalizeOptions({ ...effective, ...patch, id });
       await this.storeConfigurations({ [groupKey(path, id)]: getStoredOptions(options) });
       edit = current.kind === "comment" ? minimalHeaderEdit(source, current, options) : editLegacyGroup(source, current, options, true);
     }
     if (!edit) throw Error("\u56FE\u7247\u7EC4\u5DF2\u66F4\u65B0\uFF0C\u8BF7\u5728\u5F53\u524D\u753B\u5ECA\u4E0A\u91CD\u65B0\u6253\u5F00\u8BBE\u7F6E");
+    const selectedKey = `${path}:${selectedId}:0`, previousSelection = this.selectedImages.get(selectedKey);
     try {
+      if (selectedIndex !== void 0) this.selectedImages.set(selectedKey, selectedIndex);
       if (view) {
         if (!this.app.workspace.getLeavesOfType("markdown").some((leaf) => leaf.view === view) || view.getMode() !== "source" || view.editor.getValue() !== source || view.file?.path !== path) throw Error("\u914D\u7F6E\u5DF2\u4FDD\u5B58\uFF0C\u7B14\u8BB0\u89C6\u56FE\u5DF2\u66F4\u65B0\uFF0C\u8BF7\u91CD\u65B0\u6253\u5F00\u8BBE\u7F6E");
         this.applyEditor(view.editor, edit);
@@ -4459,6 +4872,10 @@ var ImageLayoutsEnhanced = class extends import_obsidian3.Plugin {
         if (!changed) throw Error("\u914D\u7F6E\u5DF2\u4FDD\u5B58\uFF0C\u7B14\u8BB0\u5185\u5BB9\u5DF2\u66F4\u65B0\uFF0C\u8BF7\u91CD\u65B0\u6253\u5F00\u8BBE\u7F6E");
       }
     } catch (error) {
+      if (selectedIndex !== void 0) {
+        if (previousSelection === void 0) this.selectedImages.delete(selectedKey);
+        else this.selectedImages.set(selectedKey, previousSelection);
+      }
       console.error("Image Layouts Enhanced: source write", error);
       new import_obsidian3.Notice("\u56FE\u7247\u7EC4\u66F4\u65B0\u9047\u5230\u95EE\u9898\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5");
       throw error;
@@ -4526,7 +4943,7 @@ var ImageLayoutsEnhanced = class extends import_obsidian3.Plugin {
     const images = extracted.map((ref, index) => {
       const alt = ref.kind === "wiki" ? ref.alt.split("|").filter((part) => !/^\d+(?:x\d+)?$/.test(part.trim())).join("|") : ref.alt;
       const src = resolve2(ref.target);
-      return { src, target: ref.target, alt: group.options.descriptions[index] ?? alt, line: ref.line, sourceOffset: ref.offset, missing: !src };
+      return { src, target: ref.target, alt, line: ref.line, sourceOffset: ref.offset, missing: !src };
     });
     if (group.options.fromFolder) {
       const folder = group.options.fromFolder.replace(/^\/+|\/+$/g, "");
@@ -4536,7 +4953,7 @@ var ImageLayoutsEnhanced = class extends import_obsidian3.Plugin {
       if (group.options.limit > 0) files = files.slice(0, group.options.limit);
       images.push(...files.map((file) => ({ src: this.app.vault.getResourcePath(file), target: file.path, alt: file.basename, line: group.startLine, sourceOffset: group.bodyFrom, missing: false })));
     }
-    return images;
+    return orderImages(images.map((image, index) => ({ ...image, alt: group.options.descriptions[index] ?? image.alt })), group.options.imageOrder);
   }
   getSourceImageNavigationLine(source, offset) {
     return parseGroups(source).find((group) => offset >= group.bodyFrom && offset < group.bodyTo)?.startLine ?? null;
@@ -4550,33 +4967,69 @@ var ImageLayoutsEnhanced = class extends import_obsidian3.Plugin {
     }
     return null;
   }
-  mount(host, group, path, source, component) {
-    this.hostGroups.set(host, { group, path, source });
+  updateMountedContext(host, context) {
+    this.hostGroups.set(host, context);
+    const mounted = this.navigationRenderers.get(host);
+    if (mounted) {
+      mounted.path = context.path;
+      mounted.images = this.images({ ...context.group, options: getEffectiveOptions(context.group, context.path, this.groupSettings) }, context.path, context.source);
+    }
+  }
+  mount(host, group, path, source, component, context = { group, path, source }) {
+    this.hostGroups.set(host, context);
     const effective = { ...group, options: getEffectiveOptions(group, path, this.groupSettings) };
     const images = this.images(effective, path, source);
-    const siblings = this.parsed(source, path).groups.filter((item) => item.options.id === group.options.id);
-    const occurrence = siblings.findIndex((item) => item.from === group.from);
-    const selectionKey = `${path}:${group.options.id || group.from}:${occurrence}`;
+    const selectionKey = () => {
+      const { group: group2, path: path2, source: source2 } = context;
+      const siblings = this.parsed(source2, path2).groups.filter((item) => item.options.id === group2.options.id);
+      const occurrence = siblings.findIndex((item) => item.from === group2.from);
+      return `${path2}:${group2.options.id || group2.from}:${occurrence}`;
+    };
     host.dataset.ilgGroupId = group.options.id;
     host.dataset.ilgLayout = group.options.layout;
-    const renderer = new GalleryRenderer(host, images, effective.options, {
+    const renderer = new GalleryRenderer(host, images, { ...effective.options, descriptions: images.map((image) => image.alt) }, {
       open: (index, origin) => {
-        const result = openGalleryImage(this.app, images, index, origin, path);
+        const result = openGalleryImage(this.app, this.navigationRenderers.get(host)?.images ?? images, index, origin, context.path);
         this.diagnostics[result]++;
       },
-      change: (patch) => void this.editFile(path, group, patch).catch(() => this.refreshConfiguration(path)),
-      edit: (anchor) => void this.editReferences(path, group, host, anchor).catch((error) => {
+      change: (patch) => void this.editFile(context.path, context.group, patch).catch(() => this.refreshConfiguration(context.path)),
+      edit: (anchor) => void this.editReferences(context.path, context.group, host, anchor).catch((error) => {
         console.error("Image Layouts Enhanced: edit references", error);
         new import_obsidian3.Notice("\u56FE\u7247\u5F15\u7528\u6253\u5F00\u9047\u5230\u95EE\u9898\uFF0C\u8BF7\u91CD\u8BD5");
       }),
-      unwrap: () => void this.editFile(path, group, "unwrap").catch(() => {
+      unwrap: () => void this.editFile(context.path, context.group, "unwrap").catch(() => {
       }),
-      pickLayout: (anchor) => new LayoutPicker(this.app, images.length, (patch) => void this.editFile(path, group, patch).catch(() => this.refreshConfiguration(path)), anchor, effective.options).open(),
-      configure: (anchor) => new GalleryConfiguration(anchor ?? host, effective.options, (patch) => this.editFile(path, group, patch)).open(),
-      initialIndex: this.selectedImages.get(selectionKey) ?? 0,
+      pickLayout: (anchor) => new LayoutPicker(this.app, images.length, (patch) => void this.editFile(context.path, context.group, patch).catch(() => this.refreshConfiguration(context.path)), anchor, getEffectiveOptions(context.group, context.path, this.groupSettings)).open(),
+      configure: (anchor) => new GalleryConfiguration(anchor ?? host, getEffectiveOptions(context.group, context.path, this.groupSettings), (patch) => this.editFile(context.path, context.group, patch)).open(),
+      resize: async (patch) => {
+        try {
+          await this.editFile(context.path, context.group, patch);
+        } catch (error) {
+          new import_obsidian3.Notice("\u753B\u5ECA\u5927\u5C0F\u4FDD\u5B58\u9047\u5230\u95EE\u9898\uFF0C\u8BF7\u91CD\u8BD5");
+          throw error;
+        }
+      },
+      initialIndex: this.selectedImages.get(selectionKey()) ?? 0,
       select: (index) => {
         if (this.selectedImages.size > 512) this.selectedImages.delete(this.selectedImages.keys().next().value);
-        this.selectedImages.set(selectionKey, index);
+        this.selectedImages.set(selectionKey(), index);
+      },
+      reorder: async (from, to, visibleOrder) => {
+        const current = this.navigationRenderers.get(host);
+        if (!current || this.disposed) return;
+        const order = moveImageOrder(current.images, from, to, visibleOrder);
+        const key = selectionKey(), previous = this.selectedImages.get(key), active = current.renderer.activeIndex;
+        const activeKey = current.images[active]?.orderKey;
+        const selectedIndex = Math.max(0, activeKey ? order.indexOf(activeKey) : active);
+        this.selectedImages.set(key, selectedIndex);
+        try {
+          await this.editFile(context.path, context.group, { imageOrder: order }, selectedIndex);
+        } catch (error) {
+          if (previous === void 0) this.selectedImages.delete(key);
+          else this.selectedImages.set(key, previous);
+          new import_obsidian3.Notice("\u56FE\u7247\u987A\u5E8F\u4FDD\u5B58\u9047\u5230\u95EE\u9898\uFF0C\u8BF7\u91CD\u8BD5");
+          throw error;
+        }
       }
     });
     this.navigationRenderers.set(host, { path, images, renderer });

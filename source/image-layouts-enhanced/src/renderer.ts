@@ -1,6 +1,7 @@
 import { getDominantGridDefinition, getFocusPlacement, getMatchingGridDefinition, getMasonryColumnCount, getStageLayoutLabel, getStageThumbnailOrder, swapStageImage, type GridDefinition } from './layouts';
 import { getLayoutChoices, type LayoutChoice } from './layout-choices';
-import { type Fit, type GalleryCallbacks, type GalleryImage, type GalleryOptions } from './types';
+import { type Fit, type GalleryCallbacks, type GalleryImage, type GalleryOptions, type GallerySize } from './types';
+import { ThumbnailReorder } from './thumbnail-reorder';
 
 const FIT_LABELS: Record<Fit, string> = { contain: '完整显示', cover: '填满区域', natural: '原始比例' };
 const FIT_ORDER: Fit[] = ['contain', 'cover', 'natural'];
@@ -46,7 +47,11 @@ export class GalleryRenderer {
   private scrollFrame = 0;
   private focusFrame = 0;
   private pointerStart?: { x: number; y: number; id: number };
+  private cancelResize?: () => void;
   private suppressClickUntil = 0;
+  private readonly thumbnailReorder?: ThumbnailReorder;
+
+  get activeIndex(): number { return this.index; }
 
   constructor(
     private readonly host: HTMLElement,
@@ -98,7 +103,10 @@ export class GalleryRenderer {
     this.root.appendChild(toolbar);
     this.body = this.element('div', 'ilg-body');
     this.root.appendChild(this.body);
+    if (callbacks.resize && images.length) this.attachResizeHandle(callbacks.resize);
     host.appendChild(this.root);
+    if (callbacks.reorder) this.thumbnailReorder = new ThumbnailReorder(this.root, () => this.track,
+      () => this.thumbButtons.map(button => Number(button.dataset.index)), (from, to, order) => callbacks.reorder!(from, to, order));
 
     // Obsidian and Image Toolkit both delegate image clicks to ancestors.
     // This region dispatches exactly one explicit open callback for a main image.
@@ -109,7 +117,7 @@ export class GalleryRenderer {
     if (Resize) {
       this.observer = new Resize(entries => {
         if (this.destroyed) return;
-        const width = entries.find(entry => entry.target === host)?.contentRect.width;
+        const width = entries.find(entry => entry.target === this.root)?.contentRect.width;
         if (width === undefined) return;
         const placement = getFocusPlacement(width);
         if (placement !== this.focusPlacement) {
@@ -121,7 +129,7 @@ export class GalleryRenderer {
           }
         }
       });
-      this.observer.observe(host);
+      this.observer.observe(this.root);
     }
     this.render();
   }
@@ -129,6 +137,8 @@ export class GalleryRenderer {
   destroy(): void {
     if (this.destroyed) return;
     this.destroyed = true;
+    this.cancelResize?.();
+    this.thumbnailReorder?.destroy();
     this.observer?.disconnect();
     this.cleanups.splice(0).forEach(cleanup => cleanup());
     if (this.scrollFrame) this.doc.defaultView?.cancelAnimationFrame(this.scrollFrame);
@@ -189,7 +199,92 @@ export class GalleryRenderer {
     this.callbacks.change(patch);
   }
 
+  private applySize({ width, height }: GallerySize): void {
+    this.root.style.setProperty('--ilg-height', `${height}px`);
+    this.root.style.width = this.options.align === 'full' ? '100%' : width;
+    this.root.style.maxWidth = `min(100%, ${width})`;
+  }
+
+  private attachResizeHandle(save: (patch: Partial<GallerySize>) => Promise<void>): void {
+    const handle = this.element('button', 'ilg-resize-handle') as HTMLButtonElement;
+    handle.type = 'button';
+    handle.setAttribute('aria-label', '调整画廊大小');
+    handle.title = '拖动调整画廊大小';
+    this.root.appendChild(handle);
+    let drag: { id: number; x: number; y: number; width: number; height?: number } | undefined;
+
+    const patchAt = (event: PointerEvent, start: NonNullable<typeof drag>): Partial<GallerySize> => {
+      const patch: Partial<GallerySize> = {};
+      const dx = event.clientX - start.x, dy = event.clientY - start.y;
+      const limit = Math.min(this.host.clientWidth, 4096);
+      const centered = this.options.align === 'full' || this.options.align === 'center';
+      const width = Math.round(Math.min(limit, Math.max(120, start.width + dx * (centered ? 2 : 1))));
+      if (Math.abs(dx) >= 3 && width > 0 && width !== start.width) patch.width = `${width}px`;
+      if (start.height !== undefined && Math.abs(dy) >= 3) {
+        const height = Math.round(Math.max(120, Math.min(1200, start.height + dy)));
+        if (height !== start.height) patch.height = height;
+      }
+      return patch;
+    };
+    const end = () => {
+      const id = drag?.id;
+      drag = undefined;
+      this.root.classList.remove('ilg-resizing');
+      if (id !== undefined && handle.hasPointerCapture(id)) handle.releasePointerCapture(id);
+    };
+    this.cancelResize = () => {
+      if (!drag) return;
+      end();
+      this.applySize(this.options);
+    };
+    this.listen(handle, 'pointerdown', event => {
+      const pointer = event as PointerEvent;
+      if (drag || handle.disabled || pointer.button !== 0 || !pointer.isPrimary) return;
+      const frame = this.body.querySelector<HTMLElement>('.ilg-grid, .ilg-filmstrip, .ilg-main-figure .ilg-image-button');
+      handle.setPointerCapture(pointer.pointerId);
+      drag = { id: pointer.pointerId, x: pointer.clientX, y: pointer.clientY, width: this.root.offsetWidth, height: frame?.offsetHeight };
+      event.preventDefault();
+      event.stopPropagation();
+      handle.focus({ preventScroll: true });
+      this.root.classList.add('ilg-resizing');
+    });
+    this.listen(handle, 'pointermove', event => {
+      const pointer = event as PointerEvent;
+      if (drag?.id === pointer.pointerId) this.applySize({ ...this.options, ...patchAt(pointer, drag) });
+    });
+    this.listen(handle, 'pointerup', event => {
+      const pointer = event as PointerEvent;
+      if (drag?.id !== pointer.pointerId) return;
+      const patch = patchAt(pointer, drag);
+      end();
+      this.applySize({ ...this.options, ...patch });
+      if (patch.width === undefined && patch.height === undefined) return;
+      handle.disabled = true;
+      void save(patch).then(() => Object.assign(this.options, patch)).catch(() => {
+        if (!this.destroyed) this.applySize(this.options);
+      }).finally(() => { handle.disabled = false; });
+    });
+    for (const type of ['pointercancel', 'lostpointercapture']) {
+      this.listen(handle, type, event => {
+        if (drag?.id === (event as PointerEvent).pointerId) this.cancelResize?.();
+      });
+    }
+    this.listen(handle, 'keydown', event => {
+      if ((event as KeyboardEvent).key === 'Escape' && drag) {
+        event.preventDefault();
+        this.cancelResize?.();
+      }
+      event.stopPropagation();
+    });
+    this.listen(handle, 'click', event => {
+      event.stopPropagation();
+      if ((event as MouseEvent).detail === 0) this.callbacks.configure?.(handle);
+    });
+  }
+
   private render(): void {
+    this.cancelResize?.();
+    this.thumbnailReorder?.cancel();
     if (this.scrollFrame) this.doc.defaultView?.cancelAnimationFrame(this.scrollFrame);
     if (this.focusFrame) this.doc.defaultView?.cancelAnimationFrame(this.focusFrame);
     this.scrollFrame = 0;
@@ -206,11 +301,9 @@ export class GalleryRenderer {
     this.root.dataset.fit = this.options.fit;
     this.root.dataset.overlay = this.options.overlay;
     this.root.dataset.align = this.options.align;
-    this.root.style.setProperty('--ilg-height', `${this.options.height}px`);
     this.root.style.setProperty('--ilg-gap', `${this.options.gap}px`);
     this.root.style.setProperty('--ilg-radius', `${this.options.radius}px`);
-    this.root.style.width = this.options.align === 'full' ? '100%' : this.options.width;
-    this.root.style.maxWidth = this.options.width;
+    this.applySize(this.options);
     this.updateLayoutChoices();
     this.setButtonIcon(this.fitButton, FIT_ICONS[this.options.fit]);
     this.fitButton.dataset.fit = this.options.fit;
@@ -295,6 +388,7 @@ export class GalleryRenderer {
         if (thumbnail) this.setActive(index);
         else if (Date.now() >= this.suppressClickUntil) this.callbacks.open(index, img);
       });
+    if (thumbnail && this.callbacks.reorder) button.title += '；拖动调整顺序，触屏长按后拖动；Alt＋方向键移动';
     img = this.doc.createElement('img');
     img.alt = alt;
     img.loading = thumbnail || !['carousel', 'focus'].includes(this.options.layout) ? 'lazy' : 'eager';
@@ -392,6 +486,7 @@ export class GalleryRenderer {
   }
 
   private renderStageThumbnails(grid = getDominantGridDefinition(this.options.layout, this.images.length)): void {
+    this.thumbnailReorder?.cancel();
     const track = this.track;
     if (!track) return;
     const scrollTop = track.scrollTop;
@@ -425,6 +520,7 @@ export class GalleryRenderer {
   private renderGrid(): void {
     const grid = getMatchingGridDefinition(this.options.layout, this.images.length, this.options.grid);
     const stage = this.element('div', 'ilg-grid ilg-complete-grid');
+    if (grid.rows === 1 && grid.slots > 1) stage.classList.add('ilg-single-row-grid');
     stage.style.gridTemplateColumns = grid.columnFractions.map(weight => `minmax(0, ${weight}fr)`).join(' ');
     stage.style.gridTemplateRows = `repeat(${grid.rows}, minmax(0, 1fr))`;
     stage.style.setProperty('--ilg-stage-rows', String(grid.rows));

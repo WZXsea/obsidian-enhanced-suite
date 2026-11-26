@@ -24,7 +24,7 @@ class RenderChild {
 }
 const obsidian={Plugin:Base,MarkdownRenderChild:RenderChild,PluginSettingTab:Base,Modal:Base,
  editorLivePreviewField,editorInfoField};
-const bundle=await build({stdin:{contents:readFileSync(new URL('../src/main.ts',import.meta.url),'utf8')+'\nexport {GalleryWidget,decorations,createGalleryField};',resolveDir:project+'src',loader:'ts'},
+const bundle=await build({stdin:{contents:readFileSync(process.env.GALLERY_SOURCE??new URL('../src/main.ts',import.meta.url),'utf8')+'\nexport {GalleryWidget,decorations,createGalleryField};',resolveDir:project+'src',loader:'ts'},
  bundle:true,format:'cjs',platform:'node',write:false,external:['obsidian','@codemirror/state','@codemirror/view']});
 const module={exports:{}};
 runInNewContext(bundle.outputFiles[0].text,{module,exports:module.exports,console,URL,
@@ -50,7 +50,11 @@ function fixture(text=source,plugin=new Plugin()){
   measurements.set(host,{width:765,height:567.796875});return host;
  }};
  let mounted=0,destroyed=0;
- plugin.mount=()=>{mounted++;return {destroy(){destroyed++;}};};
+ plugin.mount=(host,group,path,source,_component,context={group,path,source})=>{
+  mounted++;plugin.hostGroups.set(host,context);
+  plugin.navigationRenderers.set(host,{path,images:plugin.images(group,path,source),renderer:{}});
+  return {destroy(){destroyed++;}};
+ };
  plugin.app={metadataCache:{getFirstLinkpathDest:()=>null},vault:{getResourcePath:file=>file.path,getFiles:()=>[]}};
  const field=createGalleryField(plugin);
  let state=EditorState.create({doc:text,selection:{anchor:text.length},extensions:[editorLivePreviewField,editorInfoField,field]});
@@ -66,17 +70,25 @@ function fixture(text=source,plugin=new Plugin()){
 }
 
 test('a measured gallery reports its complete height and retains it after an Enter behind the group',()=>{
- const f=fixture(),first=f.widgets()[0];f.mount(first);assert.equal(first.estimatedHeight,567.796875);
+ const f=fixture(),first=f.widgets()[0],host=f.mount(first);assert.equal(first.estimatedHeight,567.796875);
  const [next]=f.update({changes:{from:f.state.doc.length,insert:'\n'}});
- assert.equal(first.eq(next),false,'the full source snapshot continues to refresh');
+ assert.equal(first.eq(next),false,'the dispatched view synchronizes its latest source context');
+ assert.equal(next.updateDOM(host,f.view),true,'an Enter reuses the mounted gallery');f.flush();
+ assert.deepEqual(f.counts(),{mounted:1,destroyed:0});
+ assert.equal(f.plugin.hostGroups.get(host).source,f.state.doc.toString());
  assert.equal(next.estimatedHeight,567.796875);
+ f.resize(host,765,610);assert.equal(next.estimatedHeight,610,'the reused DOM measures into its current state');
 });
 
 test('inserting text before a gallery maps its range without discarding its measured height',()=>{
- const f=fixture(),first=f.widgets()[0];f.mount(first);
+ const f=fixture(),first=f.widgets()[0],host=f.mount(first);
+ const oldOffset=f.plugin.navigationRenderers.get(host).images[0].sourceOffset;
  const oldRange=f.state.field(f.field).groups[0],insert='新增正文\n\n';
  const [next]=f.update({changes:{from:0,insert}}),newRange=f.state.field(f.field).groups[0];
  assert.equal(newRange.from,oldRange.from+insert.length);assert.equal(newRange.to,oldRange.to+insert.length);
+ assert.equal(next.updateDOM(host,f.view),true);f.flush();
+ assert.equal(f.plugin.hostGroups.get(host).group.from,newRange.from);
+ assert.equal(f.plugin.navigationRenderers.get(host).images[0].sourceOffset,oldOffset+insert.length);
  assert.equal(next.estimatedHeight,567.796875);
 });
 
@@ -86,6 +98,7 @@ test('an undispatched state branch leaves original positions intact and late wid
  const preview=original.update({changes:{from:0,insert:previewText}}).state;
  assert.equal(preview.field(f.field).groups[0].from,originalRange.from+previewText.length);
  assert.equal(original.field(f.field).heights.entries[0].from,originalRange.from);
+ assert.equal(f.plugin.hostGroups.get(host).source,source,'an undispatched branch leaves mounted actions on the real source');
  const insert='实际插入\n';
  const [next]=f.update({changes:{from:0,insert}});
  assert.equal(f.state.field(f.field).groups[0].from,originalRange.from+insert.length);
@@ -103,17 +116,19 @@ test('duplicate gallery IDs and bodies keep separate height entries when precedi
 
 test('layout and image-reference edits invalidate the previous content height',()=>{
  for(const [before,after]of [['"layout":"g"','"layout":"focus"'],['figure.png','changed.png']]){
-  const f=fixture(),first=f.widgets()[0];f.mount(first);const from=f.state.doc.toString().indexOf(before);
+  const f=fixture(),first=f.widgets()[0],host=f.mount(first);const from=f.state.doc.toString().indexOf(before);
   const [next]=f.update({changes:{from,to:from+before.length,insert:after}});
   assert.notEqual(next.estimatedHeight,567.796875);
+  assert.equal(next.updateDOM(host,f.view),false,'changed content rebuilds the gallery');
  }
 });
 
 test('an external image-reference definition changes the height signature while group raw text stays equal',()=>{
  const text=`开头\n\n${markup('ref','![图][figure]')}\n\n[figure]: https://images.example/one.png\n`;
- const f=fixture(text),first=f.widgets()[0];f.mount(first);const raw=f.state.field(f.field).groups[0].raw;
+ const f=fixture(text),first=f.widgets()[0],host=f.mount(first);const raw=f.state.field(f.field).groups[0].raw;
  const from=text.indexOf('one.png'),[next]=f.update({changes:{from,to:from+'one.png'.length,insert:'two.png'}});
  assert.equal(f.state.field(f.field).groups[0].raw,raw);assert.notEqual(next.estimatedHeight,567.796875);
+ assert.equal(next.updateDOM(host,f.view),false,'a resolved reference change rebuilds the gallery');
 });
 
 test('a configuration revision invalidates estimates without editing Markdown',()=>{

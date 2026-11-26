@@ -51,6 +51,7 @@ export class ImageControls {
       const target=this.element(event.target);
       if(target&&(this.toolbar.contains(target)||this.resizer?.contains(target)))return;
       if(pointer.pointerType!=='touch'){if(!this.findImage(target))this.hide();return;}
+      if(target?.closest('.ilg-gallery.ilg-reorder-enabled .ilg-thumb')){this.cancelPress();this.hide();return;}
       if(this.press){this.cancelPress();return;}
       const image=this.findImage(target);
       if(!image){this.hide();return;}

@@ -5,6 +5,7 @@ export interface GalleryOptions {
   caption: string; grid: string; thumbnails: boolean; overlay: 'never'|'hover'|'always';
   align: 'left'|'center'|'right'|'full'; width: string; descriptions: string[];
   fromFolder: string; sortBy: 'name'|'mtime'; reverse: boolean; limit: number;
+  imageOrder: string[];
 }
 export interface GalleryGroup {
   from: number; to: number; bodyFrom: number; bodyTo: number; startLine: number; endLine: number;
@@ -12,21 +13,27 @@ export interface GalleryGroup {
 }
 export interface GalleryImage {
   src: string; alt: string; target: string; line: number; sourceOffset: number; missing?: boolean;
+  orderKey?: string;
 }
+export type GallerySize = Pick<GalleryOptions, 'width' | 'height'>;
+
 export interface GalleryCallbacks {
   open: (index: number, origin?: HTMLImageElement) => void;
   change: (patch: Partial<GalleryOptions>) => void;
   edit: (anchor?: HTMLElement) => void;
   configure?: (anchor?: HTMLElement) => void;
+  resize?: (patch: Partial<GallerySize>) => Promise<void>;
   pickLayout?: (anchor: HTMLElement) => void;
   initialIndex?: number;
   select?: (index: number) => void;
+  reorder?: (from: number, to: number, visibleOrder?: readonly number[]) => Promise<void>;
   unwrap: () => void;
 }
 export const DEFAULT_OPTIONS: GalleryOptions = {
   id: '', layout: 'g', fit: 'contain', height: 320, gap: 8, radius: 8, caption: '',
   grid: 'A A B\nA A C', thumbnails: true, overlay: 'never', align: 'full', width: '100%',
   descriptions: [], fromFolder: '', sortBy: 'name', reverse: false, limit: 0,
+  imageOrder: [],
 };
 export const LAYOUT_LABELS: Record<Layout,string> = {
   a:'双图等宽',b:'左大右小',c:'左小右大',d:'左主图＋两图',e:'右主图＋两图',

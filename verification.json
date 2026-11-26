@@ -202,5 +202,33 @@
     ],
     "reentryHeight": 567.796875,
     "activeUserPanePreserved": true
+  },
+  "galleryCompactResize": {
+    "date": "2026-11-26",
+    "version": "0.1.15",
+    "buildPassed": true,
+    "automatedTests": {
+      "node": 157,
+      "imageEssentials": 10,
+      "allPassed": true
+    },
+    "runtimePlatform": "macOS Obsidian and Chromium",
+    "obsidianViews": [
+      "Live Preview",
+      "Reading view"
+    ],
+    "gridHeightWithToolbarAndMargins": {
+      "before": 384,
+      "after": 326.5234375
+    },
+    "resizeFixture": {
+      "widthBefore": 700,
+      "widthAfter": 570,
+      "leftMargin": 65,
+      "rightMargin": 65,
+      "savedOnRelease": true,
+      "restoredOnReopen": true,
+      "escapeCancelled": true
+    }
   }
 }

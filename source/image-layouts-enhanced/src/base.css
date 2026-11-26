@@ -7,19 +7,20 @@
   --ilg-accent: var(--interactive-accent, #5866c8);
   --ilg-muted: var(--text-muted, #747985);
   box-sizing: border-box;
-  margin: 14px 0;
+  position: relative;
+  margin: 4px 0;
   color: var(--text-normal, #252936);
   font-size: var(--font-ui-small, 13px);
   line-height: 1.45;
   contain: inline-size;
 }
 .ilg-gallery *, .ilg-gallery *::before, .ilg-gallery *::after { box-sizing: border-box; }
-.ilg-gallery[data-align="center"] { margin-inline: auto; }
+.ilg-gallery[data-align="full"], .ilg-gallery[data-align="center"] { margin-inline: auto; }
 .ilg-gallery[data-align="right"] { margin-inline-start: auto; }
 .ilg-gallery:focus-visible { outline: 2px solid var(--ilg-accent); outline-offset: 5px; border-radius: var(--ilg-radius); }
 .ilg-gallery button, .ilg-gallery select { font: inherit; }
 .ilg-gallery button { cursor: pointer; }
-.ilg-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.ilg-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 3px 6px; margin-bottom: 3px; }
 .ilg-gallery .ilg-layout-select {
   height: 28px;
   max-width: 210px;
@@ -54,8 +55,8 @@
   flex: 0 0 28px;
   width: 28px;
   min-width: 28px;
-  height: 28px;
-  padding: 5px;
+  height: 24px;
+  padding: 3px 5px;
   border: 0;
   border-radius: 5px;
   background: transparent;
@@ -76,6 +77,37 @@
 .ilg-gallery .ilg-toolbar-icon:disabled { opacity: .45; cursor: default; }
 .ilg-counter { color: var(--ilg-muted); font-size: 12px; font-variant-numeric: tabular-nums; margin-inline-start: auto; white-space: nowrap; }
 .ilg-body { min-width: 0; }
+.ilg-gallery .ilg-resize-handle {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
+  display: grid;
+  place-items: end;
+  width: 24px;
+  height: 24px;
+  padding: 0 4px 4px 0;
+  border: 0;
+  border-radius: 5px;
+  color: var(--ilg-muted);
+  background: transparent;
+  box-shadow: none;
+  cursor: nwse-resize;
+  touch-action: none;
+}
+.ilg-resize-handle::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  opacity: .65;
+}
+.ilg-gallery .ilg-resize-handle:hover,
+.ilg-gallery .ilg-resize-handle:focus-visible,
+.ilg-gallery.ilg-resizing .ilg-resize-handle { color: var(--ilg-accent); background: var(--ilg-panel); }
+.ilg-gallery .ilg-resize-handle:focus-visible { outline: 2px solid var(--ilg-accent); outline-offset: -2px; }
+.ilg-gallery.ilg-resizing { user-select: none; }
 .ilg-grid { display: grid; height: var(--ilg-height); gap: var(--ilg-gap); min-width: 0; }
 .ilg-gallery .ilg-figure { margin: 0; min-width: 0; min-height: 0; position: relative; }
 .ilg-cell-figure { display: flex; flex-direction: column; overflow: hidden; border-radius: var(--ilg-radius); background: var(--ilg-panel); }
@@ -118,10 +150,11 @@
 .ilg-gallery .ilg-image-button img[hidden], .ilg-gallery .ilg-thumb img[hidden] { display: none; }
 .ilg-image-caption {
   margin: 0;
-  padding: 5px 8px;
+  padding: 2px 8px;
   color: var(--ilg-muted);
   font-size: 12px;
-  line-height: 1.4;
+  line-height: 1.25;
+  text-align: center;
   overflow-wrap: anywhere;
 }
 .ilg-cell-figure .ilg-image-caption, .ilg-filmstrip-figure .ilg-image-caption {
@@ -139,7 +172,7 @@
   bottom: 0;
   color: white;
   background: linear-gradient(transparent, rgba(0, 0, 0, .72));
-  padding-top: 22px;
+  padding-top: 12px;
   pointer-events: none;
 }
 .ilg-gallery[data-overlay="hover"] .ilg-cell-figure .ilg-image-caption,
@@ -159,7 +192,7 @@
 .ilg-grid-placeholder { background: var(--ilg-panel); border: 1px dashed var(--ilg-border); border-radius: var(--ilg-radius); }
 .ilg-placeholder { font-size: 12px; max-width: 100%; max-height: 100%; overflow: hidden; }
 .ilg-empty { min-height: 140px; border: 1px dashed var(--ilg-border); border-radius: var(--ilg-radius); }
-.ilg-gallery .ilg-gallery-caption { margin: 8px 0 0; color: var(--ilg-muted); font-size: 13px; overflow-wrap: anywhere; }
+.ilg-gallery .ilg-gallery-caption { margin: 4px 0 0; color: var(--ilg-muted); font-size: 13px; overflow-wrap: anywhere; }
 .ilg-layout-message { color: var(--ilg-muted); font-size: 12px; margin: 6px 0 0; }
 .ilg-overflow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 6px; color: var(--ilg-muted); font-size: 12px; }
 .ilg-masonry { column-gap: var(--ilg-gap); }
@@ -196,8 +229,7 @@
 .ilg-gallery .ilg-nav:focus { background: transparent; box-shadow: none; }
 .ilg-gallery .ilg-nav:disabled { opacity: .25; cursor: default; }
 .ilg-gallery .ilg-nav[hidden] { display: none; }
-.ilg-thumbnails, .ilg-pills { display: flex; gap: var(--ilg-gap); overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; min-width: 0; padding: 5px 2px; touch-action: pan-x pan-y; }
-.ilg-thumbnails { margin-top: 5px; }
+.ilg-thumbnails, .ilg-pills { display: flex; gap: var(--ilg-gap); overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; min-width: 0; margin-top: 3px; padding: 2px; touch-action: pan-x pan-y; }
 .ilg-gallery .ilg-thumb { flex: 0 0 78px; width: 78px; height: 64px; border: 2px solid transparent; border-radius: min(var(--ilg-radius), 6px); opacity: .8; }
 .ilg-gallery .ilg-thumb:hover { opacity: 1; }
 .ilg-gallery .ilg-thumb.ilg-selected { border-color: var(--ilg-accent); opacity: 1; }
@@ -214,7 +246,7 @@
   font-size: 12px;
 }
 .ilg-gallery .ilg-pill.ilg-selected { border-color: var(--ilg-accent); color: var(--text-on-accent, white); background: var(--ilg-accent); }
-.ilg-pills { margin-top: 5px; justify-content: center; }
+.ilg-pills { justify-content: center; }
 .ilg-focus-side { display: grid; grid-template-columns: minmax(0, 1fr) 172px; gap: var(--ilg-gap); align-items: start; }
 .ilg-focus-side .ilg-thumbnails { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 78px; align-content: start; max-height: var(--ilg-height); overflow-y: auto; overflow-x: hidden; margin-top: 0; padding: 2px; overscroll-behavior-y: contain; touch-action: pan-y; }
 .ilg-focus-side .ilg-thumb { width: 100%; height: 78px; }
@@ -259,6 +291,7 @@
 @media (pointer: coarse) {
   .ilg-image-controls button { min-height: 44px; min-width: 48px; }
   .ilg-gallery .ilg-toolbar-icon, .ilg-gallery .ilg-nav, .ilg-gallery .ilg-stage-zoom { min-height: 44px; min-width: 44px; }
+  .ilg-gallery .ilg-resize-handle { width: 44px; height: 44px; }
   .ilg-viewer-toolbar button { min-width: 44px; min-height: 44px; }
   .modal.ilg-viewer { max-height: calc(100dvh - 24px); }
   .ilg-viewer-stage { height: 55dvh; min-height: 100px; }
